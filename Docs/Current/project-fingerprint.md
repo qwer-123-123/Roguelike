@@ -10,7 +10,7 @@
 | 项目根目录 | `D:\unity\XiangMu\Roguelike` |
 | 引擎 | Unity（中国版 Tuanjie 变体），编辑器 2022.3.62t11 |
 | 项目类型 | 2D 俯视角 Roguelike + 割草 |
-| 版本控制 | **无**（工程未初始化 git） |
+| 版本控制 | **Git**，2026-09-16 建立，主分支 `main`，已有基线提交 `1a468d0`。无远程仓库 |
 
 ## 技术栈签名
 
@@ -61,6 +61,28 @@ Assets/
 - **无 sprite 的 `Image`，`type` 与 `fillAmount` 不生效。** Unity 会直接走 Simple 的全矩形绘制。需要进度条请改用锚点宽度（参考 `HudController.RefreshExp`）。
 - **`GameStateModel.Reset()` 用 `SetValueWithoutEvent` 静默归零。** 这是为防止重开时误弹升级面板。需要响应重置的模块必须主动刷新，不能依赖监听（参考 `HudController.OnPhaseChanged`）。
 
+## 版本控制
+
+2026-09-16 建立。以下几条是**踩过坑后确立的**，改 `.gitignore` 前先确认理由：
+
+| 项 | 值 |
+|----|-----|
+| 分支 | `main`（本地，**无远程**） |
+| 基线提交 | `1a468d0` —— 745 文件 / 27MB |
+| git 可执行文件 | `C:\Program Files\Git\cmd\git.exe`（winget 装的 Git for Windows 2.55.0，已在机器 PATH 上，但**已在运行的进程不会自动继承新 PATH**） |
+| 提交身份 | 仓库级 `Roguelike Dev <dev@localhost>` —— **是占位符**，改真名用 `git commit --amend --reset-author`（当前只有一个根提交，改起来无代价） |
+
+**已被忽略且必须有理由的路径**（不要随手删掉这些规则）：
+
+- `Library/`（392MB）、`Temp/`、`obj/`、`.vs/`、`Logs/`、`UserSettings/` —— Unity 开一次编辑器就重建
+- `*.sln` / `*.csproj` —— Unity 打开工程时重新生成
+- `.com-unity-codely.json` —— Codely 桥接的**心跳文件**，端口/`seq`/`last_heartbeat` 每次会话都变，入了仓会一直制造提交噪音
+- `Unity-Skills-main/` —— 下载来的第三方工具快照（108MB），非本项目源码
+
+**⚠ `Unity-Skills-main/` 被忽略的副作用：** `Packages/manifest.json` 用 `file:../Unity-Skills-main/SkillsForUnity` 引用它。把本仓库克隆到别处时该相对路径会断，Unity 会报包找不到，需另行获取该工具。
+
+**`*.meta` 必须提交。** 丢了 `.meta` Unity 会重建 GUID，预制体与场景的引用会全部断开。当前 `Assets/` 下资源与 `.meta` 已全部配对。
+
 ## 校验规则
 
 1. 确认本文件的「项目根目录」字段与当前工作目录一致。
@@ -71,7 +93,8 @@ Assets/
 
 - **MVP 已收口**：完整跑通「开始界面 → 开局 → 移动 → 杀怪 → 升级三选一 → 死亡 → 重开」一局。
 - 迭代日志见 `Docs/IterationLogs/`（索引在同目录 `README.md`）；当前计划 `Docs/Plans/2026-09-10-计划-MVP收口与开始界面.md` 全部迭代已完成。
-- 遗留项：无版本控制；`Configs/` 为空（无配置表）；三选一仍是「3 张固定牌打乱顺序」而非真随机池；无 asmdef。
+- 遗留项：`Configs/` 为空（无配置表）；三选一仍是「3 张固定牌打乱顺序」而非真随机池；无 asmdef；无远程仓库（仅本地）。
+- **版本控制已于 2026-09-16 建立**，此前「无版本控制」的遗留项已消除。规范见下节。
 
 ## 维护提示
 
