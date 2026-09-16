@@ -1,0 +1,70 @@
+# ============================================================
+# 菌核狂潮 / Roguelike — Unity 工程
+# 建立于 2026-09-16
+#
+# 原则：只提交「源码 + 资源 + 配置 + 文档」。
+#       Unity 能重新生成的、或随本机状态变化的，一律忽略。
+#       注意 *.meta 文件**必须提交**（不要在此文件里忽略它们）。
+# ============================================================
+
+# ---------- Unity 生成物（开一次编辑器就会重建） ----------
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]serSettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+sysinfo.txt
+*.stackdump
+crashlytics-build.properties
+*.apk
+*.aab
+*.unitypackage
+
+# ---------- IDE / 自动生成的工程文件 ----------
+# Unity 每次打开工程都会重新生成 .sln 与 *.csproj
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.vs/
+.idea/
+.vscode/*.log
+*.tmp
+
+# ---------- 本机 / 运行时状态（每次会话都变，进来只会制造噪音） ----------
+# Codely 桥接的心跳文件：端口、seq、last_heartbeat 每次都更新
+.com-unity-codely.json
+.claude/settings.local.json
+*.pid
+
+# ---------- 第三方工具快照 ----------
+# Unity-Skills-main 是下载来的 GitHub 快照（108MB，自带 LICENSE/README/.github），
+# 不属于本项目源码。2026-09-16 决定不入仓。
+#
+# ⚠ 副作用：Packages/manifest.json 里有
+#     "com.besty.unity-skills": "file:../Unity-Skills-main/SkillsForUnity"
+#   把本仓库克隆到别处时，这个相对路径会断，Unity 会报「包找不到」。
+#   届时需另行获取该工具，或把该依赖摘掉。
+Unity-Skills-main/
+
+# 外部素材包（craftpix Zombie TDS kit）位于仓库外：
+#   D:\AI编程\成套资源_ZOMBIE TDS 2D GAME KIT
+# Docs/Design/h5/assets/ 是它的已优化子集，属交付物，**正常入仓**。
+
+# ---------- 操作系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
