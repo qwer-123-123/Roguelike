@@ -10,7 +10,7 @@
 | 项目根目录 | `D:\unity\XiangMu\Roguelike` |
 | 引擎 | Unity（中国版 Tuanjie 变体），编辑器 2022.3.62t11 |
 | 项目类型 | 2D 俯视角 Roguelike + 割草 |
-| 版本控制 | **Git**，2026-09-16 建立，主分支 `main`，已有基线提交 `1a468d0`。无远程仓库 |
+| 版本控制 | **Git**，2026-09-16 建立，主分支 `main`，基线提交 `d08d132`。无远程仓库 |
 
 ## 技术栈签名
 
@@ -68,9 +68,9 @@ Assets/
 | 项 | 值 |
 |----|-----|
 | 分支 | `main`（本地，**无远程**） |
-| 基线提交 | `1a468d0` —— 745 文件 / 27MB |
+| 基线提交 | `d08d132` —— 745 文件 / 27MB |
 | git 可执行文件 | `C:\Program Files\Git\cmd\git.exe`（winget 装的 Git for Windows 2.55.0，已在机器 PATH 上，但**已在运行的进程不会自动继承新 PATH**） |
-| 提交身份 | 仓库级 `Roguelike Dev <dev@localhost>` —— **是占位符**，改真名用 `git commit --amend --reset-author`（当前只有一个根提交，改起来无代价） |
+| 提交身份 | 全局 `张彬 <1379413408@qq.com>`。**仓库级无覆盖** —— 若在此仓库设 `git config --local user.*` 会盖掉全局，注意别无意中设回去 |
 
 **已被忽略且必须有理由的路径**（不要随手删掉这些规则）：
 
