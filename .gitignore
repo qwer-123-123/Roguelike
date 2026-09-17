@@ -60,9 +60,18 @@ crashlytics-build.properties
 #   届时需另行获取该工具，或把该依赖摘掉。
 Unity-Skills-main/
 
-# 外部素材包（craftpix Zombie TDS kit）位于仓库外：
-#   D:\AI编程\成套资源_ZOMBIE TDS 2D GAME KIT
-# Docs/Design/h5/assets/ 是它的已优化子集，属交付物，**正常入仓**。
+# ---------- 第三方素材：本地保留，不入公开仓库 ----------
+# 本仓库 2026-09-17 推送到 GitHub **公开**仓库。以下两处是第三方版权内容，
+# 推上去等于再分发；而素材许可（Docs/Design/h5 风险 R11 / P0）至今未读，故排除。
+#
+# ⚠ 这两处的内容**仍在本地磁盘上**（只是不再进 git），
+#   Docs/Design/h5/index.html 照常能双击打开。
+#   换机器时需另行获取：
+#     - Docs/Design/h5/assets/  ← 外部素材包 D:\AI编程\成套资源_ZOMBIE TDS 2D GAME KIT
+#                                  （提取/合成脚本见 Docs/Design/_tools/，可重跑）
+#     - .claude/skills/         ← Unity-Skills-main 的技能文档副本
+Docs/Design/h5/assets/
+.claude/skills/
 
 # ---------- 操作系统 ----------
 .DS_Store
