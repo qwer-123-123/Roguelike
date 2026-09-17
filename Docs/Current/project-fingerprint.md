@@ -10,7 +10,7 @@
 | 项目根目录 | `D:\unity\XiangMu\Roguelike` |
 | 引擎 | Unity（中国版 Tuanjie 变体），编辑器 2022.3.62t11 |
 | 项目类型 | 2D 俯视角 Roguelike + 割草 |
-| 版本控制 | **Git**，2026-09-16 建立，主分支 `main`，基线提交 `d08d132`。无远程仓库 |
+| 版本控制 | **Git**，2026-09-16 建仓，2026-09-17 推送至 GitHub 公开仓库。`main` → `origin/main`，基线提交 `b2f0e67`。**本地跟踪 198 文件，24MB 第三方素材故意不入仓**（见「版本控制」节） |
 
 ## 技术栈签名
 
@@ -63,25 +63,52 @@ Assets/
 
 ## 版本控制
 
-2026-09-16 建立。以下几条是**踩过坑后确立的**，改 `.gitignore` 前先确认理由：
+2026-09-16 建立本地仓库，2026-09-17 推送到 GitHub 公开仓库。以下几条是**踩过坑后确立的**，改 `.gitignore` 前先确认理由：
 
 | 项 | 值 |
 |----|-----|
-| 分支 | `main`（本地，**无远程**） |
-| 基线提交 | `d08d132` —— 745 文件 / 27MB |
+| 远程 | `origin` → `https://github.com/qwer-123-123/Roguelike.git`（**公开**） |
+| 分支 | `main`，已跟踪 `origin/main` |
+| 基线提交 | `b2f0e67` —— 745 文件 / 27MB |
+| 本地跟踪文件 | **198 个（约 1MB）**，不含第三方素材，见下 |
 | git 可执行文件 | `C:\Program Files\Git\cmd\git.exe`（winget 装的 Git for Windows 2.55.0，已在机器 PATH 上，但**已在运行的进程不会自动继承新 PATH**） |
 | 提交身份 | 全局 `张彬 <1379413408@qq.com>`。**仓库级无覆盖** —— 若在此仓库设 `git config --local user.*` 会盖掉全局，注意别无意中设回去 |
+| 凭证 | Git Credential Manager（`credential.helper=manager`）。本机**无 SSH 密钥、无 `gh` CLI**，推送走 HTTPS + 浏览器授权 |
 
-**已被忽略且必须有理由的路径**（不要随手删掉这些规则）：
+### ⚠ 本地与远程不一致（最容易踩的一个坑）
+
+以下两处是**第三方版权内容**，推送到公开仓库等于再分发，且素材许可（`Docs/Design/h5` 风险 R11 / P0）至今未读，故**已从全部历史提交中摘除**：
+
+| 路径 | 规模 | 内容 |
+|------|------|------|
+| `Docs/Design/h5/assets/` | 370 文件 / 24.3MB | craftpix Zombie TDS kit 子集 |
+| `.claude/skills/` | 178 文件 / 2.1MB | Unity-Skills-main 技能文档副本 |
+
+**这两处仍在本地磁盘上，但不在 git 里**（`git status` 看不到，`git clean -fdx` 会删掉）。后果：
+
+- 本地 `Docs/Design/h5/index.html` 照常能双击打开；**克隆到新机器则打不开**，需按 `.gitignore` 注释另行获取
+- **它们没有版本保护** —— 因为不在 git 里，误删无法用 git 恢复
+
+### 已被忽略且必须有理由的路径
 
 - `Library/`（392MB）、`Temp/`、`obj/`、`.vs/`、`Logs/`、`UserSettings/` —— Unity 开一次编辑器就重建
 - `*.sln` / `*.csproj` —— Unity 打开工程时重新生成
 - `.com-unity-codely.json` —— Codely 桥接的**心跳文件**，端口/`seq`/`last_heartbeat` 每次会话都变，入了仓会一直制造提交噪音
 - `Unity-Skills-main/` —— 下载来的第三方工具快照（108MB），非本项目源码
+- `Docs/Design/h5/assets/`、`.claude/skills/` —— 见上
 
 **⚠ `Unity-Skills-main/` 被忽略的副作用：** `Packages/manifest.json` 用 `file:../Unity-Skills-main/SkillsForUnity` 引用它。把本仓库克隆到别处时该相对路径会断，Unity 会报包找不到，需另行获取该工具。
 
 **`*.meta` 必须提交。** 丢了 `.meta` Unity 会重建 GUID，预制体与场景的引用会全部断开。当前 `Assets/` 下资源与 `.meta` 已全部配对。
+
+### 历史重写终止线
+
+仓库已于 2026-09-17 **公开**。**此后不得再重写历史**（对已推送提交做 `filter-branch` / `rebase` / `--amend`）—— 需要改正就往前加新提交。此前已重写两次（改提交身份、摘除第三方素材），均发生在推送之前。
+
+### 第三方代码合规
+
+- `Assets/QFramework/QFramework.cs` —— liangxiegame 的 **MIT** 授权代码，版权头完整保留，允许再分发
+- 本仓库**暂无本项目自身的 LICENSE 文件**；公开仓库无 LICENSE 即默认「保留所有权利」
 
 ## 校验规则
 
