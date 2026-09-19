@@ -178,8 +178,113 @@ function showFatal(msg){
 addEventListener('error', e => showFatal(`✗ ${e.message}\n  ${e.filename}:${e.lineno}`));
 addEventListener('unhandledrejection', e => showFatal('✗ Promise: ' + (e.reason && e.reason.message || e.reason)));
 
+/* ---------- ?selftest=1 端到端自检 ----------
+   走真实的按钮点击链路，而不是直接调 startRun()。
+   结果写进 #selftest，配合 --dump-dom 读取。
+   之前只用 ?auto= 验证过渲染与主循环，那条路径绕过了所有按钮，交互接线没测过。 */
+function runSelfTest(){
+  const log = [];
+  let failed = 0;
+  const step = (name, fn) => {
+    try { fn(); log.push('OK   ' + name); }
+    catch (e){ failed++; log.push('FAIL ' + name + ' :: ' + e.message); }
+  };
+  const $ = id => document.getElementById(id);
+  const ticks = n => { for (let i = 0; i < n; i++){ if (Main.game.state !== 'playing') break; Main.game.update(1/60); } };
+
+  step('主菜单可见',        () => { if (!$('scr-menu').classList.contains('on')) throw new Error('菜单未显示'); });
+  step('点击「开始战斗」',  () => { $('btn-start').click(); });
+  step('切到兵种选择界面',  () => { if (!$('scr-pick').classList.contains('on')) throw new Error('pick 界面未显示'); });
+  step('兵种列表 10 项',    () => { const n = UI.el.pickList.children.length; if (n !== 10) throw new Error(`实际 ${n} 项`); });
+  step('列表头像全部加载',  () => {
+    const imgs = [...UI.el.pickList.querySelectorAll('img')];
+    const bad = imgs.filter(i => !i.complete || i.naturalWidth === 0);
+    if (bad.length) throw new Error(`${bad.length}/${imgs.length} 张头像加载失败: ${bad[0] && bad[0].src.split('/').pop()}`);
+  });
+  step('默认选中第一项',    () => { if (!UI.el.pickName.textContent.includes('匕首')) throw new Error('详情=' + UI.el.pickName.textContent); });
+  step('切换到第 3 个(手枪)', () => { UI.el.pickList.children[2].click(); });
+  step('详情随之刷新',      () => { if (!UI.el.pickName.textContent.includes('手枪')) throw new Error('详情=' + UI.el.pickName.textContent); });
+  step('点击「开始战斗」',  () => { $('btn-pick-go').click(); });
+  step('进入 playing',      () => { if (Main.game.state !== 'playing') throw new Error('state=' + Main.game.state); });
+  step('HUD 已显示',        () => { if (!$('scr-hud').classList.contains('on')) throw new Error('HUD 未显示'); });
+  step('兵器图标已加载',    () => { const i = $('hud-weapon'); if (!i.complete || i.naturalWidth === 0) throw new Error('武器图标未加载'); });
+
+  step('跑 600 tick 后刷出敌人', () => {
+    ticks(600);
+    let alive = 0; for (const e of Main.game.enemies.used) if (!e.dead && e.state !== 'death') alive++;
+    if (alive === 0) throw new Error('没有敌人');
+  });
+  step('WASD 键位能移动玩家', () => {
+    Input.keys['KeyD'] = true;
+    const x0 = Main.game.player.x;
+    ticks(45);
+    Input.keys['KeyD'] = false;
+    if (Main.game.player.x <= x0 + 0.1) throw new Error(`x ${x0.toFixed(2)} -> ${Main.game.player.x.toFixed(2)}`);
+  });
+  step('掉落物已生成',      () => {
+    if (Main.game.pickups.used.length === 0) throw new Error('没有掉落物');
+  });
+  step('走到经验球上能拾取', () => {
+    // 静止时远程击杀掉落散在远处，捡不到是正常的；这里直接把玩家挪到球上验证拾取链路
+    const orb = Main.game.pickups.used.find(p => p.type === 'exp');
+    if (!orb) throw new Error('没有经验球');
+    const e0 = Main.game.exp, lv0 = Main.game.level;
+    Main.game.player.x = orb.x; Main.game.player.y = orb.y;
+    orb.dead = false; orb.t = 0;
+    ticks(6);
+    if (Main.game.exp === e0 && Main.game.level === lv0) throw new Error('经验未增加');
+  });
+
+  step('升级面板能弹出',    () => {
+    Main.game.pendingLevels = 0;              // 先归零，避免与上面拾取触发的升级叠加
+    Main.game.collect({ type:'exp', data: expNeed(Main.game.level) });
+    if (!$('scr-upgrade').classList.contains('on')) throw new Error('三选一面板未弹出');
+    if (UI.upOptions.length !== 3) throw new Error(`选项 ${UI.upOptions.length} 个`);
+    if (Main.game.pendingLevels !== 1) throw new Error(`待选级数 ${Main.game.pendingLevels}`);
+  });
+  step('三选一卡面图标加载', () => {
+    const imgs = [...$('up-cards').querySelectorAll('img')];
+    const bad = imgs.filter(i => !i.complete || i.naturalWidth === 0);
+    if (bad.length) throw new Error(`${bad.length} 张图标加载失败`);
+  });
+  step('点击卡片能生效',    () => {
+    const before = Main.game.takenUpgrades.length;
+    $('up-cards').children[0].click();
+    if (Main.game.takenUpgrades.length !== before + 1) throw new Error('强化未生效');
+  });
+  step('升级后回到战斗',    () => {
+    // 连点直到待选级数清空（一次升多级会连弹多次，这是预期行为）
+    let guard = 0;
+    while (Main.game.state === 'levelup' && guard++ < 10) $('up-cards').children[0].click();
+    if (Main.game.state !== 'playing') throw new Error('state=' + Main.game.state + ' 待选=' + Main.game.pendingLevels);
+  });
+
+  step('死亡能进入结算',    () => {
+    Main.game.player.iframe = 0;
+    Main.game.player.hurt(99999, Main.game, null);
+    ticks(120);
+    if (Main.game.state !== 'over') throw new Error('state=' + Main.game.state);
+    UI.showOver(Main.game);
+    if (!$('scr-over').classList.contains('on')) throw new Error('结算界面未显示');
+    if ($('ov-kills').textContent === '0') throw new Error('结算数据未填充');
+  });
+  step('点击「重开」能重开', () => { $('btn-retry').click(); if (Main.game.state !== 'playing' || Main.game.kills !== 0) throw new Error('重开失败'); });
+  step('点击「返回主菜单」', () => { Main.game.player.iframe = 0; Main.game.player.hurt(99999, Main.game, null); ticks(120); UI.showOver(Main.game); $('btn-menu').click(); if (!$('scr-menu').classList.contains('on')) throw new Error('未回主菜单'); });
+
+  const el = document.createElement('pre');
+  el.id = 'selftest';
+  el.style.cssText = 'position:fixed;inset:0;z-index:999;background:#0b0d10;color:#9fe09f;' +
+    'font:12px/1.6 Consolas,monospace;padding:16px;overflow:auto;white-space:pre-wrap';
+  el.textContent = `自检：${log.length - failed}/${log.length} 通过\n\n` + log.join('\n') +
+    `\n\n结果：${failed ? 'FAILED (' + failed + ')' : 'ALL PASS'}`;
+  document.body.appendChild(el);
+}
+
 addEventListener('DOMContentLoaded', () => {
   Main.boot();
+  if (/[?&]selftest=1/.test(location.search)){
+    const t = setInterval(() => { if (UI.el.pickList){ clearInterval(t); setTimeout(runSelfTest, 400); } }, 60);
+  }
   // ?screen=pick|help|upgrade|over|pause 直接打开某个界面（自动化核对用）
   const sm = /[?&]screen=(\w+)/.exec(location.search);
   if (sm){
