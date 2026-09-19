@@ -78,6 +78,17 @@ Docs/Design/h5/assets/
 Docs/Design/_tools/out/
 Docs/Design/_tools/edgetmp/
 
+# 无头浏览器（msedge --user-data-dir）产生的临时配置目录。
+# ⚠ 教训：早期只写死了 edgetmp/，而调试脚本用的是 edge_$RANDOM / ep_$RANDOM$RANDOM
+#   这类**随机名**，结果一次 git add -A 把 3279 个浏览器配置文件（含 History/
+#   Login Data/Cookies 空库与 ~7MB 崩溃转储）提交进了公开仓库。
+#   凡是给浏览器指定 user-data-dir 的脚本，务必让它生成到已忽略的路径下，
+#   别用随机名散落在 _tools/ 里。
+Docs/Design/_tools/edge_*/
+Docs/Design/_tools/ep_*/
+Docs/Design/_tools/*_profile/
+**/.browser-profile/
+
 # ---------- 操作系统 ----------
 .DS_Store
 Thumbs.db
