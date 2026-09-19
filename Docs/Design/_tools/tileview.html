@@ -1,0 +1,53 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#101216;color:#ccc;font:12px monospace;padding:12px}
+h3{color:#c9b478;margin:16px 0 6px;font-size:13px}
+.row{display:flex;gap:4px;flex-wrap:wrap;align-items:flex-start}
+.t{text-align:center}.t img{width:64px;height:64px;image-rendering:pixelated;border:1px solid #333;display:block}
+.t div{font-size:9px;color:#777}
+.pv{display:flex;gap:16px;margin-top:8px}
+.pv canvas{border:1px solid #444;background:#000}
+</style></head><body>
+<div id="out"></div>
+<script>
+const BASE='../h5/assets/tile/';
+const SETS=['ground_tiles','grass_tiles','asphalt_tiles','water_tiles'];
+const out=document.getElementById('out');
+(async()=>{
+ for(const s of SETS){
+  const files=[];
+  for(let i=0;i<13;i++){
+    // 文件名里的 Layer 号不连续，用 glob 不方便，这里按目录顺序列（下面用 index 探测）
+  }
+  // 用已知命名逐个试
+  const list=[];
+  for(let i=0;i<13;i++){
+    for(let layer=0; layer<60; layer++){
+      const n=`${s}_${String(i).padStart(4,'0')}_Layer-${layer}.png`;
+      const ok=await new Promise(r=>{const im=new Image();im.onload=()=>r(true);im.onerror=()=>r(false);im.src=BASE+n;});
+      if(ok){ list.push(n); break; }
+    }
+  }
+  const h=document.createElement('h3'); h.textContent=`${s}  (${list.length} 张)`;
+  out.appendChild(h);
+  const row=document.createElement('div'); row.className='row';
+  for(const n of list){
+    const d=document.createElement('div'); d.className='t';
+    const im=document.createElement('img'); im.src=BASE+n; im.title=n;
+    const c=document.createElement('div'); c.textContent=n.match(/_(\d{4})_/)[1];
+    d.appendChild(im); d.appendChild(c); row.appendChild(d);
+  }
+  out.appendChild(row);
+  // 用第一张做 5x5 平铺预览，检查是否无缝
+  const im=new Image();
+  await new Promise(r=>{im.onload=r; im.src=BASE+list[0];});
+  const pv=document.createElement('div'); pv.className='pv';
+  const cv=document.createElement('canvas'); cv.width=320; cv.height=320;
+  const g=cv.getContext('2d');
+  const pat=g.createPattern(im,'repeat');
+  g.fillStyle=pat; g.fillRect(0,0,320,320);
+  pv.appendChild(cv);
+  out.appendChild(pv);
+ }
+ document.title='done';
+})();
+</script></body></html>

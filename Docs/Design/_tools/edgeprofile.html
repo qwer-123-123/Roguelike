@@ -1,0 +1,32 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#0b0d10;color:#cfe;font:15px/1.5 Consolas,monospace;padding:14px;white-space:pre}
+</style></head><body><div id="o">…</div><script>
+const B='../h5/assets/tile/';
+const BASE={ground:50,water:29};
+const o=document.getElementById('o');
+(async()=>{
+ const out={};
+ for(const set of ['ground','water']){
+  out[set]={};
+  for(let i=0;i<13;i++){
+   const f=`${set}_tiles_${String(i).padStart(4,'0')}_Layer-${BASE[set]-i}.png`;
+   const im=new Image();
+   const ok=await new Promise(r=>{im.onload=()=>r(true);im.onerror=()=>r(false);im.src=B+f;});
+   if(!ok) continue;
+   const c=document.createElement('canvas'); c.width=im.width; c.height=im.height;
+   const g=c.getContext('2d'); g.drawImage(im,0,0);
+   let d; try{ d=g.getImageData(0,0,c.width,c.height).data; }
+   catch(e){ o.textContent='ERR: 需要 --allow-file-access-from-files'; return; }
+   const W=c.width,H=c.height,A=(x,y)=>d[(y*W+x)*4+3];
+   const seg=(n,fn)=>{ let t=0,cnt=0; const lo=Math.floor(n*0.2),hi=Math.ceil(n*0.8);
+                       for(let k=lo;k<hi;k++){ const [x,y]=fn(k); if(A(x,y)<32)t++; cnt++; } return t/cnt; };
+   const N=seg(W,k=>[k,0])>0.5?1:0, S=seg(W,k=>[k,H-1])>0.5?1:0;
+   const Wt=seg(H,k=>[0,k])>0.5?1:0, E=seg(H,k=>[W-1,k])>0.5?1:0;
+   const mask=N|(E<<1)|(S<<2)|(Wt<<3);
+   (out[set][mask]=out[set][mask]||[]).push(i);
+  }
+ }
+ o.textContent='const TILE_MASK = '+JSON.stringify(out).replace(/","/g,'",\n  "').replace(/\{/g,'{\n  ').replace(/\}/g,'\n}');
+ document.title='done';
+})();
+</script></body></html>

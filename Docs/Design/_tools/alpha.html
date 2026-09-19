@@ -1,0 +1,38 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#0d0f12;color:#ccc;font:12px monospace;padding:10px}
+.row{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
+.cell{text-align:center}
+canvas{border:1px solid #444;image-rendering:pixelated}
+</style></head><body><div id="o"></div><script>
+const B='../h5/assets/tile/';
+const items=[
+ ['ground_tiles_0000_Layer-50.png','土 dirt#0'],
+ ['ground_tiles_0003_Layer-47.png','土 dirt#3'],
+ ['asphalt_tiles_0000_Layer-12.png','柏油 #0'],
+ ['asphalt_tiles_0006_Layer-6.png','柏油 #6'],
+ ['water_tiles_0000_Layer-29.png','水 #0'],
+ ['water_tiles_0004_Layer-25.png','水 #4'],
+];
+const o=document.getElementById('o');
+(async()=>{
+ const row=document.createElement('div'); row.className='row';
+ for(const [f,label] of items){
+   const im=new Image();
+   await new Promise(r=>{im.onload=r; im.onerror=r; im.src=B+f;});
+   const d=document.createElement('div'); d.className='cell';
+   const c=document.createElement('canvas'); c.width=89*3; c.height=89*3;
+   const g=c.getContext('2d');
+   // 棋盘底（看透明）
+   for(let y=0;y<9;y++)for(let x=0;x<9;x++){
+     g.fillStyle=((x+y)%2)?'#2a2f38':'#1b1f26';
+     g.fillRect(x*30,y*30,30,30);
+   }
+   g.imageSmoothingEnabled=false;
+   g.drawImage(im,0,0,89*3,89*3);
+   const cap=document.createElement('div'); cap.textContent=label;
+   d.appendChild(c); d.appendChild(cap); row.appendChild(d);
+ }
+ o.appendChild(row);
+ document.title='done';
+})();
+</script></body></html>

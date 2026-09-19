@@ -1,0 +1,34 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#0b0d10;color:#cfe;font:11px Consolas,monospace;padding:10px}
+h3{color:#c9b478;margin:8px 0 4px;font-size:12px}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.c{text-align:center}
+canvas{border:1px solid #333;display:block;image-rendering:pixelated}
+</style></head><body><div id="o"></div><script>
+const B='../h5/assets/tile/';
+const BASE={ground:50,grass:55,water:29,asphalt:12};
+const o=document.getElementById('o');
+(async()=>{
+ for(const set of ['ground','water','grass']){
+  const h=document.createElement('h3'); h.textContent=set; o.appendChild(h);
+  const row=document.createElement('div'); row.className='row'; o.appendChild(row);
+  for(let i=0;i<13;i++){
+   const f=`${set}_tiles_${String(i).padStart(4,'0')}_Layer-${BASE[set]-i}.png`;
+   const im=new Image();
+   const ok=await new Promise(r=>{im.onload=()=>r(true);im.onerror=()=>r(false);im.src=B+f;});
+   const d=document.createElement('div'); d.className='c';
+   const S=76, c=document.createElement('canvas'); c.width=c.height=S;
+   const g=c.getContext('2d');
+   if(ok){
+     for(let y=0;y<S;y+=9)for(let x=0;x<S;x+=9){
+       g.fillStyle=((x/9+y/9)%2)?'#3a4048':'#20242b'; g.fillRect(x,y,9,9);
+     }
+     g.drawImage(im,0,0,S,S);
+   }
+   const cap=document.createElement('div'); cap.textContent=String(i).padStart(4,'0');
+   d.appendChild(c); d.appendChild(cap); row.appendChild(d);
+  }
+ }
+ document.title='done';
+})();
+</script></body></html>

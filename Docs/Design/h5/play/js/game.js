@@ -41,6 +41,27 @@ const SFX = {
 /* ---------- 竞技场尺寸（格） ---------- */
 const ARENA = { w: 60, h: 60 };
 
+/* ---------- 自动拼接（autotile）映射 ----------
+   ground/water 每套 13 张：1 内部 + 4 边 + 4 角，正好覆盖区域边界的所有情况。
+   键 = 缺席邻边的掩码（N=1 E=2 S=4 W=8），值 = 可用瓦片索引列表。
+
+   这张表是**实测**出来的，不是猜的：用 _tools/edgeprofile.html 逐张读四条边的
+   透明像素比例（>50% 视为该边敞开）。要重新测量就跑它 —— 注意它依赖
+   canvas.getImageData，在 file:// 下会被判为污染画布，必须加
+   --allow-file-access-from-files 才读得到。 */
+const TILE_MASK = {
+  ground: {
+    0:  [3, 7, 10, 11, 12],   // 内部
+    1:  [1],  2: [9],  4: [6],  8: [4],     // 缺一边
+    3:  [2],  6: [8],  12: [5], 9: [0],     // 缺两相邻边（角）
+  },
+  water: {
+    0:  [5, 9, 10, 11, 12],
+    1:  [1],  2: [7],  4: [6],  8: [3],
+    3:  [2],  6: [8],  12: [4], 9: [0],
+  },
+};
+
 class Game {
   constructor(){
     this.player = null;
@@ -53,6 +74,119 @@ class Game {
     this.floats      = new Pool(() => new FloatText(0,0,''), f => { f.dead = true; }, 40);
 
     this.state = 'idle';        // idle | playing | paused | levelup | over
+    this.floorDecals = [];
+    this._floorPat = null;
+  }
+
+  /* ================= 地面 =================
+     素材包给了 4 套地形瓦片（各 13 张 89×89）。用法：
+       grass_tiles_0000  完全不透明且无缝 -> 整块基底平铺
+       ground/water      多数带透明边缘 -> 成片铺在草地上
+       asphalt           不透明的马路拼块 -> 未使用
+
+     两个踩过的坑（改这里前先看）：
+     1. **不能把瓦片当独立贴花**：随机旋转 + 放大到 2~5 格，圆滑边被拉长成近似
+        直线，整片地面看起来就是一堆贴歪的方块。
+     2. **也不能只按格子成片铺**：这些是自动拼接的边角件，区域外边界正好落在
+        瓦片的直边上，会露出明显的直角。
+     正确做法是按 TILE_MASK **按掩码选瓦片**（见下），让边界由瓦片自带的
+     透明边处理。整块地面烘焙到离屏画布，每帧只 blit 一次。
+     */
+  /** 生成地面布局（固定种子，每局一致）。
+      返回「区域」列表而不是逐格瓦片 —— 烘焙时才展开成瓦片。 */
+  buildFloorPlan(){
+    const rng = makeRng(0x5EEDF00D);
+    const hw = ARENA.w/2, hh = ARENA.h/2;
+    const plan = [];
+    for (let i = 0; i < 8; i++){
+      plan.push({ set:'water', cx: rng.range(-hw+6, hw-6), cy: rng.range(-hh+6, hh-6),
+                  r: rng.range(2.5, 5.0), a: rng.range(0.80, 0.95), seed: rng.int(0,9999) });
+    }
+    for (let i = 0; i < 24; i++){
+      plan.push({ set:'ground', cx: rng.range(-hw+4, hw-4), cy: rng.range(-hh+4, hh-4),
+                  r: rng.range(2.0, 6.5), a: rng.range(0.45, 0.75), seed: rng.int(0,9999) });
+    }
+    return plan;
+  }
+
+  /** 把整块地面烘焙到一张离屏画布，之后每帧只 blit 一次。
+      为什么这么做：这些地形瓦片是**自动拼接的边角件**，直接铺一片区域，
+      区域外边界就是瓦片的直边，会很显眼。这里改为每个区域先画进临时画布，
+      再用径向渐变 destination-in 把边缘擦虚 —— 得到自然的不规则轮廓。
+      顺带把每帧 300+ 次贴图绘制变成 1 次 drawImage。 */
+  bakeFloor(){
+    const __t0 = (performance || Date).now();
+    const P = CFG.PX_PER_UNIT;
+    const hw = ARENA.w/2, hh = ARENA.h/2;
+    const cw = Math.ceil(ARENA.w * P), ch = Math.ceil(ARENA.h * P);
+    const c = document.createElement('canvas');
+    c.width = cw; c.height = ch;
+    const g = c.getContext('2d');
+
+    // ---- 1. 草地基底：铺满整张画布 ----
+    const grass = S('t:grass:0');
+    let ok = false;
+    if (grass){
+      const pat = g.createPattern(grass.img, 'repeat');
+      if (pat){
+        const k = P / grass.fw;               // 一张瓦片铺 1 个世界单位
+        if (pat.setTransform) pat.setTransform(new DOMMatrix([k, 0, 0, k, 0, 0]));
+        g.fillStyle = pat;
+        g.fillRect(0, 0, cw, ch);
+        ok = true;
+      }
+    }
+    if (!ok){ g.fillStyle = '#232c19'; g.fillRect(0, 0, cw, ch); }   // 兜底
+    this._floorBaked = ok;
+
+    // ---- 2. 逐个区域铺瓦片 ----
+    // 边界的处理：**按到区域边缘的距离逐格算透明度**，让最外一圈渐隐。
+    // 试过两条弯路，都记在这里免得重走：
+    //   a) 整片用统一透明度 —— 区域外边界就是瓦片的直边，一眼看出是方块
+    //   b) 画进临时画布再用径向渐变 destination-in 擦边 —— 渐变半径稍不留神
+    //      就落在瓦片铺到的范围之外，等于没擦；而且多一层离屏画布，更慢
+    // 逐格渐隐只影响最外一圈，内部仍是统一透明度，不会暴露格子边界。
+    const STEP = 3.6;                          // 瓦片在世界里的尺寸（比原图略放大，少些重复感）
+    const plan = this.buildFloorPlan();
+    this._planCount = plan.length;
+
+    for (const p of plan){
+      const map = TILE_MASK[p.set] || TILE_MASK.ground;
+      // 每格一个**稳定**的随机值（按坐标哈希，不能依赖遍历顺序 —— 判断邻格时要重算）
+      const cellRand = (gx, gy) => {
+        let h = (p.seed ^ Math.imul(gx, 374761393) ^ Math.imul(gy, 668265263)) | 0;
+        h = Math.imul(h ^ (h >>> 13), 1274126177);
+        return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+      };
+      const inside = (gx, gy) =>
+        Math.hypot(gx * STEP, gy * STEP) <= p.r * (0.55 + cellRand(gx, gy) * 0.85);
+
+      const n = Math.ceil(p.r * 1.6 / STEP) + 1;
+      for (let gy = -n; gy <= n; gy++){
+        for (let gx = -n; gx <= n; gx++){
+          if (!inside(gx, gy)) continue;
+          // 掩码 = 缺席的邻边（N=1 E=2 S=4 W=8）
+          let mask = 0;
+          if (!inside(gx, gy - 1)) mask |= 1;
+          if (!inside(gx + 1, gy)) mask |= 2;
+          if (!inside(gx, gy + 1)) mask |= 4;
+          if (!inside(gx - 1, gy)) mask |= 8;
+          const list = map[mask] || map[0];          // 罕见的鞍点情况退回内部瓦片
+          const idx = list[Math.floor(cellRand(gx, gy) * list.length)];
+          const sp = S(`t:${p.set}:${idx}`);
+          if (!sp) continue;
+          g.globalAlpha = p.a;
+          const dw = STEP * P, dh = STEP * P;
+          g.drawImage(sp.img, 0, 0, sp.fw, sp.fh,
+            (p.cx + gx * STEP + hw) * P - dw/2, (p.cy + gy * STEP + hh) * P - dh/2, dw, dh);
+        }
+      }
+      g.globalAlpha = 1;
+    }
+
+    this.floorCanvas = c;
+    this.bakeMs = Math.round((performance || Date).now() - __t0);
+    console.log('[floor] baked in ' + this.bakeMs + 'ms, patches=' + this._planCount);
   }
 
   /* ================= 生命周期 ================= */
@@ -76,6 +210,7 @@ class Game {
     this.bossAlive = null;
     this.state = 'playing';
     Camera.x = 0; Camera.y = 0; Camera.shake = 0;
+    if (!this.floorCanvas) this.bakeFloor();   // 地面只烘焙一次，重开复用
     this.nextWave();
   }
 
@@ -331,19 +466,37 @@ class Game {
 
     Camera.apply(ctx, w, h);
 
-    // 竞技场网格 + 边界（相机已 scale，这里一律用世界单位）
-    ctx.save();
-    ctx.strokeStyle = 'rgba(90,105,125,.10)';
-    ctx.lineWidth = px(1);
     const hw = ARENA.w/2, hh = ARENA.h/2;
-    for (let gx = -hw; gx <= hw; gx += 4){
-      ctx.beginPath(); ctx.moveTo(gx, -hh); ctx.lineTo(gx, hh); ctx.stroke();
+
+    // ---- 地面：烘焙好的整块地面，按视野裁一小块贴上来 ----
+    const P = CFG.PX_PER_UNIT;
+    if (this.floorCanvas){
+      const vw = w / P, vh = h / P;                 // 视野尺寸（世界单位）
+      const wx0 = Camera.x - vw/2, wy0 = Camera.y - vh/2;
+      ctx.drawImage(this.floorCanvas,
+        (wx0 + hw) * P, (wy0 + hh) * P, vw * P, vh * P,   // 源：地面画布上的像素区
+        wx0, wy0, vw, vh);                                 // 目标：世界坐标
+    } else {
+      ctx.fillStyle = '#232c19';                    // 素材缺失兜底
+      ctx.fillRect(-hw, -hh, ARENA.w, ARENA.h);
     }
-    for (let gy = -hh; gy <= hh; gy += 4){
-      ctx.beginPath(); ctx.moveTo(-hw, gy); ctx.lineTo(hw, gy); ctx.stroke();
+
+    // ---- 网格 + 边界 ----
+    // 地面烘焙成功时不再画网格（草地已经很花，网格只会像调试叠层）；
+    // 素材缺失时保留网格，否则画面是一片空黑，看不出坐标感。
+    ctx.save();
+    if (!this.floorCanvas || !this._floorBaked){
+      ctx.strokeStyle = 'rgba(90,105,125,.10)';
+      ctx.lineWidth = px(1);
+      for (let gx = -hw; gx <= hw; gx += 4){
+        ctx.beginPath(); ctx.moveTo(gx, -hh); ctx.lineTo(gx, hh); ctx.stroke();
+      }
+      for (let gy = -hh; gy <= hh; gy += 4){
+        ctx.beginPath(); ctx.moveTo(-hw, gy); ctx.lineTo(hw, gy); ctx.stroke();
+      }
     }
-    // 边界警示
-    ctx.strokeStyle = 'rgba(224,96,58,.55)';
+    // 边界警示（保留 —— 让玩家看得出场地范围）
+    ctx.strokeStyle = 'rgba(224,96,58,.60)';
     ctx.lineWidth = px(3);
     ctx.setLineDash([px(14), px(10)]);
     ctx.strokeRect(-hw, -hh, ARENA.w, ARENA.h);

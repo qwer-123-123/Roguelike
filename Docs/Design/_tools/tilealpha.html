@@ -1,0 +1,40 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#0b0d10;color:#cfe;font:12px Consolas,monospace;padding:12px}
+table{border-collapse:collapse}td,th{padding:2px 8px;border-bottom:1px solid #222;text-align:left}
+.ok{color:#8fe08f}.no{color:#f08080}.mid{color:#e0c060}
+</style></head><body><div id="o">计算中…</div><script>
+const B='../h5/assets/tile/';
+const BASE={ground:50,grass:55,water:29};
+const o=document.getElementById('o');
+(async()=>{
+ let html='<table><tr><th>瓦片</th><th>透明像素占比</th><th>四角是否透明</th><th>四边是否全不透明</th><th>判定</th></tr>';
+ for(const set of ['ground','water','grass']){
+  for(let i=0;i<13;i++){
+   const f=`${set}_tiles_${String(i).padStart(4,'0')}_Layer-${BASE[set]-i}.png`;
+   const im=new Image();
+   const ok=await new Promise(r=>{im.onload=()=>r(true);im.onerror=()=>r(false);im.src=B+f;});
+   if(!ok) continue;
+   const c=document.createElement('canvas'); c.width=im.width;c.height=im.height;
+   const g=c.getContext('2d'); g.drawImage(im,0,0);
+   const d=g.getImageData(0,0,c.width,c.height).data;
+   let trans=0;
+   for(let p=3;p<d.length;p+=4) if(d[p]<16) trans++;
+   const frac=trans/(c.width*c.height);
+   const A=(x,y)=>d[(y*c.width+x)*4+3];
+   const corners=[A(1,1),A(c.width-2,1),A(1,c.height-2),A(c.width-2,c.height-2)];
+   const cornerT=Math.max(...corners)<16;
+   // 四条边中间像素是否都完全不透明
+   let edgesSolid=true;
+   for(let x=0;x<c.width;x++){ if(A(x,0)<250||A(x,c.height-1)<250) edgesSolid=false; }
+   for(let y=0;y<c.height;y++){ if(A(0,y)<250||A(c.width-1,y)<250) edgesSolid=false; }
+   const kind = edgesSolid ? '<span class="no">实心块（不能散铺）</span>'
+              : (cornerT&&frac>0.1) ? '<span class="ok">带透明边的斑块 ✓</span>'
+              : '<span class="mid">边角过渡块</span>';
+   html+=`<tr><td>${set} ${String(i).padStart(4,'0')}</td><td>${(frac*100).toFixed(1)}%</td>`+
+         `<td>${cornerT?'是':'否'}</td><td>${edgesSolid?'是':'否'}</td><td>${kind}</td></tr>`;
+  }
+ }
+ o.innerHTML=html+'</table>';
+ document.title='done';
+})();
+</script></body></html>

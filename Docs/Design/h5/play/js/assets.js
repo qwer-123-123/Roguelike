@@ -39,12 +39,42 @@ for (const id of Object.keys(ENEMIES)) {
 SPRITE_DEFS.push({ k:'vfx:explosion', src:'vfx/explosion.png', f:6 });
 SPRITE_DEFS.push({ k:'vfx:shots',     src:'vfx/shots_fire.png', f:13 });
 
+/* ---------- 地面瓦片 ----------
+   每套 13 张 89×89。文件名里的 Layer 号是线性递减的（base - i），
+   实测 base：ground=50 / grass=55 / asphalt=12 / water=29。
+   用法（见 game.js 的 ensureFloor / buildFloor）：
+     grass  0000 是无缝的，做整块基底平铺
+     ground 多数带透明边缘，当泥土贴花散铺
+     water  带透明边缘，当水洼散铺
+     asphalt 不透明、是马路拼块，散铺会像贴方块，故未用于基底
+   只加载实际用到的，避免多拉 30 张没用上的图。 */
+const TILE_BASE = { ground:50, grass:55, water:29 };
+// 必须**整 13 张全加载** —— 自动拼接的每个掩码都指向具体索引，
+// 少一张就会出现「某些格子取不到图直接不画」的空洞（water mask 0 用到索引 5）。
+const TILE_USE  = {
+  grass:  [0, 1, 2],
+  ground: [0,1,2,3,4,5,6,7,8,9,10,11,12],
+  water:  [0,1,2,3,4,5,6,7,8,9,10,11,12],
+};
+for (const name of Object.keys(TILE_USE)) {
+  for (const i of TILE_USE[name]) {
+    const num = String(i).padStart(4, '0');
+    SPRITE_DEFS.push({
+      k: `t:${name}:${i}`,
+      src: `tile/${name}_tiles_${num}_Layer-${TILE_BASE[name] - i}.png`,
+      f: 1,
+    });
+  }
+}
+
 // 图标 / 立绘（单帧）
+// 角色头像在 assets/portrait/ —— ui/Icons/ 里只有女性头像（素材包的 UI 套件
+// 没带男性），早先写 ui/Icons/ 会让男性头像静默加载失败。
 const PLAIN = [
-  ['p:man',        'ui/Icons/man%20icon_no_bg.png'],
-  ['p:girl',       'ui/Icons/girl%20icon_no_bg.png'],
-  ['p:man_box',    'ui/Icons/man%20icon.png'],
-  ['p:girl_box',   'ui/Icons/girl%20icon.png'],
+  ['p:man',        'portrait/man%20icon_no_bg.png'],
+  ['p:girl',       'portrait/girl%20icon_no_bg.png'],
+  ['p:man_box',    'portrait/man%20icon.png'],
+  ['p:girl_box',   'portrait/girl%20icon.png'],
 ];
 for (const w of WEAPON_ORDER) PLAIN.push([`w:${w}`, `item/${WEAPONS[w].icon}.png`]);
 for (const u of UPGRADES)          PLAIN.push([`s:${u.icon}`, `ui/Icons/${u.icon}.png`]);
