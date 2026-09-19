@@ -10,7 +10,10 @@
 | `h5/index.html` | **菌核狂潮 · H5 策划案（美术落地版）** —— 单文件可直接双击打开，无需服务器 |
 | `h5/catalog.js` | 素材词典数据（184 个 UI 零件 + 图标 / 道具 / 载具 / 地形 / 特效的逐件标注） |
 | `h5/assets/` | 从素材包提取并优化后的自包含素材（24MB / 370 文件） |
+| `h5/play/` | **可试玩原型** —— 策划案的可运行版本，双击 `index.html` 即玩。见其 `README.md` |
 | `_tools/` | 生成 `h5/assets/` 的 PowerShell 脚本，可重跑 |
+
+> `h5/assets/` 与 `h5/play/` 都依赖 `h5/assets/`，而该目录**不在 git 里**（第三方素材版权，见 `Docs/Current/project-fingerprint.md`）。本机可用，克隆到别处需按本文末节重新生成。
 
 ## 策划案包含的 7 个部分
 
