@@ -1,0 +1,328 @@
+/* =====================================================================
+   菌核狂潮 · 可试玩原型
+   界面元素全部取自素材包 craftpix Zombie TDS 2D Game Kit 的真实 PNG，
+   与 Docs/Design/h5/index.html 的「界面拼接」章节一致。
+   路径基准：play/css/  →  ../../assets/
+   ===================================================================== */
+
+:root{
+  --olive:#a9c33c;  --olive-d:#7a9127;  --olive-glow:#c8e05a;
+  --brass:#c9b478;  --brass-l:#e2d3a4;
+  --ink:#0d0f12;    --panel:#191c21;   --line:#31363f;
+  --warn:#e0603a;   --mut:#7f8794;
+  --A:"../../assets/";
+}
+
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{width:100%; height:100%; overflow:hidden; background:#07080a}
+body{
+  font:14px/1.6 "Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,sans-serif;
+  color:#d8dce3; user-select:none; -webkit-user-select:none;
+}
+img{display:block}
+
+#stage{position:fixed; inset:0; width:100%; height:100%; display:block}
+#ui{position:fixed; inset:0; pointer-events:none}
+.screen{position:absolute; inset:0; display:none; pointer-events:auto; overflow:hidden}
+.screen.on{display:block}
+.screen.modal{background:rgba(6,8,10,.82); display:none; align-items:center; justify-content:center}
+.screen.modal.on{display:flex}
+
+/* ---------- 通用按钮：真实素材 element_0074 做主行动按钮 ---------- */
+.btn{
+  appearance:none; border:0; cursor:pointer; color:#e9eef5;
+  font:600 15px/1 inherit; letter-spacing:.5px;
+  padding:14px 30px; background:transparent;
+  background-image:url("../../assets/ui/element_0074_Layer-76.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+  transition:filter .12s, transform .06s;
+  text-shadow:0 1px 3px #000;
+}
+.btn:hover{filter:brightness(1.22)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{color:#eaf6bf; text-shadow:0 0 10px rgba(169,195,60,.55),0 1px 3px #000}
+.btn.ghost{
+  background-image:url("../../assets/ui/element_0032_Layer-34.png");
+  font-size:13.5px; padding:11px 22px; color:var(--brass-l);
+}
+
+/* =====================================================================
+   主菜单
+   ===================================================================== */
+#scr-menu{
+  background:
+    linear-gradient(rgba(9,11,14,.82),rgba(9,11,14,.95)),
+    url("../../assets/ui/background.png") center/cover;
+}
+.menu-frame{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:min(560px,86vw); text-align:center; padding:46px 30px;
+  background-image:url("../../assets/ui/element_0075_Layer-77.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+}
+.game-title{
+  font-size:44px; letter-spacing:10px; color:var(--brass-l); font-weight:700;
+  text-shadow:0 3px 0 #000, 0 0 30px rgba(169,195,60,.35); margin-bottom:6px;
+}
+.subtitle{color:var(--mut); font-size:13px; letter-spacing:3px; margin-bottom:32px}
+.menu-btns{display:flex; gap:16px; justify-content:center; flex-wrap:wrap}
+.hint-line{margin-top:26px; color:var(--mut); font-size:12.5px; letter-spacing:.5px}
+
+/* =====================================================================
+   兵种选择：底板用 window/Main.png（左侧竖条=列表，中央=立绘）
+   ===================================================================== */
+#scr-pick{
+  background:linear-gradient(rgba(9,11,14,.9),rgba(9,11,14,.96)),
+             url("../../assets/ui/background2.png") center/cover;
+}
+.pick-frame{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:min(1080px,95vw); height:min(660px,92vh);
+  display:flex; flex-direction:column; padding:26px 30px 20px;
+  background-image:url("../../assets/ui/element_0075_Layer-77.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+}
+.pick-title{font-size:20px; color:var(--brass-l); letter-spacing:3px; text-align:center; margin-bottom:16px}
+.pick-body{flex:1; display:flex; gap:22px; min-height:0}
+
+.pick-list{
+  width:290px; flex:none; overflow-y:auto; padding-right:6px;
+  display:flex; flex-direction:column; gap:7px;
+}
+.pick-list::-webkit-scrollbar{width:6px}
+.pick-list::-webkit-scrollbar-thumb{background:#3a4150; border-radius:3px}
+.pick-item{
+  display:flex; align-items:center; gap:10px; padding:9px 11px; cursor:pointer;
+  background:#171b21; border:1px solid var(--line); border-radius:4px;
+  transition:.12s;
+}
+.pick-item:hover{background:#1f242c; border-color:#4a5262}
+.pick-item.on{
+  background:linear-gradient(#28320f,#1a2110); border-color:var(--olive-d);
+  box-shadow:inset 0 0 18px rgba(169,195,60,.14);
+}
+.pick-item img{width:30px; height:30px; object-fit:contain; flex:none}
+.pick-item .pi-n{font-size:13.5px; color:var(--brass-l); font-weight:600}
+.pick-item .pi-r{font-size:11.5px; color:var(--mut)}
+
+.pick-detail{
+  flex:1; min-width:0; position:relative; padding:6px 18px;
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+}
+.pick-portrait{height:210px; display:flex; align-items:flex-end; justify-content:center; margin-bottom:10px}
+.pick-portrait img{max-height:100%; max-width:100%; object-fit:contain; filter:drop-shadow(0 6px 16px rgba(0,0,0,.7))}
+.pick-detail h3{font-size:22px; color:var(--brass-l); letter-spacing:3px; margin-bottom:3px}
+.pick-role{color:var(--olive-glow); font-size:13px; letter-spacing:1px; margin-bottom:14px}
+.pick-stats{
+  display:grid; grid-template-columns:auto auto; gap:6px 26px;
+  font-size:13px; margin-bottom:16px;
+}
+.pick-stats div{display:contents}
+.pick-stats dt{color:var(--mut); text-align:right}
+.pick-stats dd{color:var(--olive-glow); font-family:Consolas,monospace; text-align:left}
+.pick-weapons{display:flex; gap:14px; align-items:flex-end; margin-top:auto; padding-bottom:6px}
+.pick-weapons img{width:42px; height:42px; object-fit:contain; opacity:.35; transition:.15s}
+.pick-weapons img.on{opacity:1; transform:scale(1.18)}
+.pick-foot{display:flex; justify-content:center; gap:18px; padding-top:16px}
+
+/* =====================================================================
+   战斗 HUD
+   ===================================================================== */
+#scr-hud{pointer-events:none}
+#scr-hud.on{display:block}
+
+.hud-tl{position:absolute; left:22px; top:20px; width:min(420px,38vw)}
+.bar{
+  position:relative; height:26px; margin-bottom:7px;
+  background-image:url("../../assets/ui/element_0065_Layer-67.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+}
+.bar i{
+  position:absolute; inset:0; display:block;
+  background-size:100% 100%; background-repeat:no-repeat;
+  transition:clip-path .12s linear;
+}
+.bar-hp i{background-image:url("../../assets/ui/element_0067_Layer-69.png")}
+.bar-hp{height:30px}
+.bar span{
+  position:absolute; inset:0; display:flex; align-items:center; padding-left:22px;
+  font:600 12.5px/1 Consolas,monospace; color:#fff; text-shadow:0 1px 3px #000;
+}
+.bar-exp{height:14px}
+.bar-exp i{background-image:url("../../assets/ui/element_0047_Layer-49.png")}
+.hud-lv{
+  margin-left:4px; font:600 12px/1 Consolas,monospace; color:var(--mut);
+  text-shadow:0 1px 3px #000;
+}
+.hud-lv b{color:var(--olive-glow); font-size:14px}
+
+.hud-top{position:absolute; left:50%; top:16px; transform:translateX(-50%)}
+.wave-banner{
+  padding:8px 44px; color:#eaf6bf; font:700 15px/1 Consolas,monospace; letter-spacing:2px;
+  background-image:url("../../assets/ui/element_0064_Layer-66.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+  text-shadow:0 1px 4px #000;
+}
+.wave-banner span{color:var(--mut); font-size:12px; font-weight:400}
+
+.hud-tr{position:absolute; right:22px; top:20px; text-align:right}
+.info-panel{
+  padding:14px 20px; min-width:190px;
+  background-image:url("../../assets/ui/element_0075_Layer-77.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+}
+.info-panel div{display:flex; justify-content:space-between; gap:14px; font-size:12.5px; margin:3px 0}
+.info-panel span{color:var(--mut)}
+.info-panel b{color:var(--olive-glow); font-family:Consolas,monospace}
+.info-panel .sep{height:1px; background:#3a4150; margin:7px 0}
+.hud-money{display:flex; align-items:center; justify-content:flex-end; gap:7px; margin-top:12px}
+.hud-money img{width:22px; height:22px; object-fit:contain}
+.hud-money b{color:var(--brass-l); font-family:Consolas,monospace}
+
+.hud-bl{position:absolute; left:22px; bottom:20px; display:flex; align-items:flex-end; gap:16px}
+.weapon-slot{
+  position:relative; width:96px; height:82px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:5px;
+  background-image:url("../../assets/ui/element_0032_Layer-34.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+}
+.weapon-slot img{width:44px; height:44px; object-fit:contain}
+.weapon-slot .ammo{
+  position:relative; width:62px; height:9px;
+  background-image:url("../../assets/ui/element_0066_Layer-68.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+}
+.weapon-slot .ammo i{
+  position:absolute; inset:0; background-image:url("../../assets/ui/element_0047_Layer-49.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+}
+.weapon-slot span{font:11px/1 Consolas,monospace; color:var(--mut)}
+
+.skill-row{display:flex; gap:6px; padding:6px; background-image:url("../../assets/ui/element_0071_Layer-73.png"); background-size:100% 100%; background-repeat:no-repeat}
+.skill-slot{
+  position:relative; width:44px; height:44px;
+  background-image:url("../../assets/ui/element_0033_Layer-35.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+}
+.skill-slot img{position:absolute; inset:6px; width:calc(100% - 12px); height:calc(100% - 12px); object-fit:contain}
+.skill-slot .stk{
+  position:absolute; right:1px; bottom:0; font:700 11px/1 Consolas,monospace;
+  color:var(--olive-glow); text-shadow:0 1px 3px #000;
+}
+.skill-slot.empty{opacity:.35}
+
+.touch-stick{display:none; position:absolute; left:30px; bottom:30px; width:130px; height:130px; opacity:.5}
+.touch-stick img{width:100%; height:100%; object-fit:contain}
+body.touch .touch-stick{display:block}
+body.touch .hud-bl{left:auto; right:22px}
+
+/* =====================================================================
+   升级三选一 / 暂停 / 说明
+   ===================================================================== */
+.up-frame{
+  width:min(880px,94vw); padding:26px 30px 22px; text-align:center;
+  background-image:url("../../assets/ui/element_0075_Layer-77.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+}
+.up-frame.narrow{width:min(460px,90vw)}
+.up-title{
+  font-size:18px; color:#eaf6bf; letter-spacing:3px; margin-bottom:20px;
+  padding:9px 0; background-image:url("../../assets/ui/element_0064_Layer-66.png");
+  background-size:100% 100%; background-repeat:no-repeat; text-shadow:0 1px 4px #000;
+}
+.up-title b{color:var(--brass-l)}
+
+.up-cards{display:flex; gap:16px; justify-content:center; margin-bottom:16px; flex-wrap:wrap}
+.up-card{
+  width:210px; padding:16px 14px 14px; cursor:pointer; position:relative;
+  background-image:url("../../assets/ui/element_0018_Layer-20.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+  transition:.13s;
+}
+.up-card:hover{filter:brightness(1.25) saturate(1.15); transform:translateY(-3px)}
+/* 选中态不要换成 element_0019 —— 那张金属面板是亮底，文字会糊在上面看不清。
+   保持暗底，改用橄榄色描边 + 辉光表示选中。 */
+.up-card.sel{
+  filter:brightness(1.16) saturate(1.2);
+  box-shadow:0 0 0 2px var(--olive), 0 0 22px rgba(169,195,60,.5);
+}
+/* 卡面文字加暗底衬，保证在任何卡面底色上都能读 */
+.up-card h4,.up-card p,.up-card .uc-rar{
+  text-shadow:0 1px 3px #000, 0 0 8px #000;
+}
+.up-card .uc-icon{
+  width:74px; height:74px; margin:0 auto 10px; position:relative;
+  background-image:url("../../assets/ui/element_0032_Layer-34.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+}
+.up-card .uc-icon img{position:absolute; inset:10px; width:calc(100% - 20px); height:calc(100% - 20px); object-fit:contain}
+.up-card h4{font-size:14.5px; color:var(--brass-l); margin-bottom:6px; letter-spacing:1px}
+.up-card p{font-size:12px; color:#aab2bd; line-height:1.55; min-height:52px}
+.up-card .uc-rar{font-size:11.5px; letter-spacing:1px; margin-top:8px}
+.rar-0{color:var(--mut)} .rar-1{color:#7cc8ee} .rar-2{color:#f0a05a}
+.up-hint{color:var(--mut); font-size:12px; letter-spacing:.5px}
+
+.help-list{text-align:left; margin:0 auto 20px; max-width:520px; list-style:none; font-size:13.5px}
+.help-list li{padding:7px 0; border-bottom:1px solid #262c34; color:#b8c0cb}
+.help-list li b{color:var(--brass-l); margin-right:6px}
+
+/* =====================================================================
+   死亡结算：底板用 window/Inventary.png（左=立绘+统计，右=4x4 网格）
+   ===================================================================== */
+#scr-over{
+  background:linear-gradient(rgba(9,11,14,.9),rgba(9,11,14,.96)),
+             url("../../assets/ui/background2.png") center/cover;
+}
+/* Inventary.png 实测 900×524。容器必须锁这个比例，否则底板被拉伸，
+   里面各分区就对不上了。下列百分比是按底板自身的分区量出来的。 */
+.over-frame{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:min(900px,94vw); aspect-ratio:900/524;
+  background-image:url("../../assets/ui/window/Inventary.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+}
+.over-portrait{                      /* 底板左上大格 */
+  position:absolute; left:22.6%; top:10.5%; width:18.2%; height:28%;
+  display:flex; align-items:center; justify-content:center;
+}
+.over-portrait img{max-height:100%; max-width:100%; object-fit:contain; filter:grayscale(.7) brightness(.85)}
+.over-stats{                          /* 底板左下属性面板 */
+  position:absolute; left:21.5%; top:43%; width:20.2%; height:33.5%;
+  font-size:11.5px; display:flex; flex-direction:column; justify-content:space-between;
+}
+.over-stats div{display:flex; justify-content:space-between; gap:6px}
+.over-stats dt{color:var(--mut); white-space:nowrap}
+.over-stats dd{color:var(--olive-glow); font-family:Consolas,monospace; text-shadow:0 1px 3px #000}
+.over-stats dd.rank{color:#f0a05a; font-weight:700}
+
+.over-right{                          /* 底板右侧 4×4 网格 */
+  position:absolute; left:43.2%; top:5%; width:40%; height:73%;
+  display:flex; flex-direction:column;
+}
+.over-right h3{
+  font-size:13px; color:var(--brass-l); margin-bottom:5%; letter-spacing:2px;
+  text-align:center; text-shadow:0 1px 3px #000;
+}
+.loot-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; flex:1; min-height:0}
+.loot-cell{
+  aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+  background:rgba(10,12,16,.55); border:1px solid #2b313a; border-radius:3px;
+}
+.loot-cell img{width:70%; height:70%; object-fit:contain}
+.over-foot{
+  position:absolute; left:0; right:0; bottom:3.5%;
+  display:flex; justify-content:center; gap:22px;
+}
+
+/* =====================================================================
+   载入遮罩
+   ===================================================================== */
+#loading{
+  position:fixed; inset:0; z-index:99; display:flex; align-items:center; justify-content:center;
+  background:#07080a; transition:opacity .4s;
+}
+#loading.done{opacity:0; pointer-events:none}
+.load-inner{text-align:center; width:300px}
+.load-bar{height:16px; margin-bottom:12px; background-image:url("../../assets/ui/element_0065_Layer-67.png"); background-size:100% 100%; background-repeat:no-repeat; position:relative}
+.load-bar i{position:absolute; inset:0; width:0; background-image:url("../../assets/ui/element_0067_Layer-69.png"); background-size:100% 100%; background-repeat:no-repeat; transition:width .2s}
+#load-text{color:var(--mut); font-size:12.5px; letter-spacing:1px}

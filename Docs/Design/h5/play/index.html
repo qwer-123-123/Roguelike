@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>菌核狂潮 · 可试玩原型</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- 战斗画布 -->
+<canvas id="stage"></canvas>
+
+<!-- ============ 界面层（全部用素材包真实 UI 元素拼装） ============ -->
+<div id="ui">
+
+  <!-- ---------- 主菜单 ---------- -->
+  <section class="screen" id="scr-menu">
+    <div class="menu-frame">
+      <h1 class="game-title">菌核狂潮</h1>
+      <p class="subtitle">Roguelike 割草 · 可试玩原型</p>
+      <div class="menu-btns">
+        <button class="btn ui-btn" id="btn-start">开始战斗</button>
+        <button class="btn ui-btn" id="btn-help">操作说明</button>
+      </div>
+      <p class="hint-line">WASD / 方向键 移动 &nbsp;·&nbsp; 自动攻击 &nbsp;·&nbsp; ESC 暂停</p>
+    </div>
+  </section>
+
+  <!-- ---------- 兵种选择 ---------- -->
+  <section class="screen" id="scr-pick">
+    <div class="pick-frame">
+      <h2 class="pick-title">选择作战单位</h2>
+
+      <div class="pick-body">
+        <div class="pick-list" id="pick-list"></div>
+
+        <div class="pick-detail">
+          <div class="pick-portrait" id="pick-portrait"></div>
+          <h3 id="pick-name">—</h3>
+          <p class="pick-role" id="pick-role">—</p>
+          <dl class="pick-stats" id="pick-stats"></dl>
+          <div class="pick-weapons" id="pick-weapons"></div>
+        </div>
+      </div>
+
+      <div class="pick-foot">
+        <button class="btn ui-btn" id="btn-pick-back">返回</button>
+        <button class="btn ui-btn primary" id="btn-pick-go">开始战斗</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- 战斗 HUD ---------- -->
+  <section class="screen hud" id="scr-hud">
+    <div class="hud-tl">
+      <div class="bar bar-hp"><i id="hp-fill"></i><span id="hp-text">HP</span></div>
+      <div class="bar bar-exp"><i id="exp-fill"></i></div>
+      <div class="hud-lv">LV <b id="lv-text">1</b></div>
+    </div>
+
+    <div class="hud-top">
+      <div class="wave-banner">WAVE <b id="wave-text">1</b> <span id="wave-left"></span></div>
+    </div>
+
+    <div class="hud-tr">
+      <div class="info-panel">
+        <div><span>存活</span><b id="time-text">00:00</b></div>
+        <div><span>击杀</span><b id="kill-text">0</b></div>
+        <div class="sep"></div>
+        <div><span>难度</span><b id="diff-text">×1.0</b></div>
+      </div>
+      <div class="hud-money"><img src="../assets/ui/Icons/items_0013_money.png" alt=""><b id="money-text">0</b></div>
+    </div>
+
+    <div class="hud-bl">
+      <div class="weapon-slot">
+        <img id="hud-weapon" src="" alt="">
+        <div class="ammo"><i id="ammo-fill"></i></div>
+        <span id="ammo-text">∞</span>
+      </div>
+      <div class="skill-row" id="skill-row"></div>
+    </div>
+
+    <!-- 触屏摇杆（移动端才显示） -->
+    <div class="touch-stick" id="touch-stick"><img src="../assets/ui/element_0004_Layer-6.png" alt=""></div>
+  </section>
+
+  <!-- ---------- 升级三选一 ---------- -->
+  <section class="screen modal" id="scr-upgrade">
+    <div class="up-frame">
+      <div class="up-title">等级提升 <b id="up-lv">2</b> — 选择一项强化</div>
+      <div class="up-cards" id="up-cards"></div>
+      <div class="up-hint">← → 或 1 / 2 / 3 选择 &nbsp;·&nbsp; 点击确认</div>
+    </div>
+  </section>
+
+  <!-- ---------- 暂停 ---------- -->
+  <section class="screen modal" id="scr-pause">
+    <div class="up-frame narrow">
+      <div class="up-title">已暂停</div>
+      <div class="menu-btns">
+        <button class="btn ui-btn primary" id="btn-resume">继续</button>
+        <button class="btn ui-btn" id="btn-quit">返回主菜单</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- 死亡结算 ---------- -->
+  <section class="screen" id="scr-over">
+    <div class="over-frame">
+      <!-- 各块按 Inventary.png 的内部分区定位（见 css 注释），不用 flex 排 -->
+      <div class="over-portrait" id="over-portrait"></div>
+      <dl class="over-stats">
+        <div><dt>存活时间</dt><dd id="ov-time">00:00</dd></div>
+        <div><dt>击杀总数</dt><dd id="ov-kills">0</dd></div>
+        <div><dt>到达波次</dt><dd id="ov-wave">1</dd></div>
+        <div><dt>最终等级</dt><dd id="ov-lv">1</dd></div>
+        <div><dt>获得金币</dt><dd id="ov-money">0</dd></div>
+        <div><dt>本局评级</dt><dd id="ov-rank" class="rank">—</dd></div>
+      </dl>
+      <div class="over-right">
+        <h3>本局强化</h3>
+        <div class="loot-grid" id="ov-loot"></div>
+      </div>
+      <div class="over-foot">
+        <button class="btn ui-btn primary" id="btn-retry">重　开</button>
+        <button class="btn ui-btn" id="btn-menu">返回主菜单</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- 操作说明 ---------- -->
+  <section class="screen modal" id="scr-help">
+    <div class="up-frame">
+      <div class="up-title">操作说明</div>
+      <ul class="help-list">
+        <li><b>移动</b>　WASD 或 方向键</li>
+        <li><b>攻击</b>　自动瞄准最近敌人，无需按键</li>
+        <li><b>升级</b>　拾取经验后弹出三选一，← → 或 1/2/3 选择，空格/回车确认</li>
+        <li><b>暂停</b>　ESC</li>
+        <li><b>移动端</b>　左侧半屏拖动为虚拟摇杆</li>
+      </ul>
+      <div class="menu-btns">
+        <button class="btn ui-btn primary" id="btn-help-close">知道了</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- 载入遮罩 -->
+<div id="loading"><div class="load-inner"><div class="load-bar"><i id="load-fill"></i></div><span id="load-text">载入素材…</span></div></div>
+
+<script src="js/data.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/core.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

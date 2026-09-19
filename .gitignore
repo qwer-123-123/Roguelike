@@ -73,6 +73,11 @@ Unity-Skills-main/
 Docs/Design/h5/assets/
 .claude/skills/
 
+# ---------- 本机调试产物 ----------
+# _tools/ 下的脚本要入仓（用来重新生成素材），但它们的输出与浏览器临时目录不入仓
+Docs/Design/_tools/out/
+Docs/Design/_tools/edgetmp/
+
 # ---------- 操作系统 ----------
 .DS_Store
 Thumbs.db
