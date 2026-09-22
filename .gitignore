@@ -73,6 +73,17 @@ Unity-Skills-main/
 Docs/Design/h5/assets/
 .claude/skills/
 
+# ---------- 游戏美术（临时保护） ----------
+# Assets/Art/ 是从 craftpix「Zombie TDS 2D Game Kit」拆帧导入的商业素材。
+#
+# ⚠ 本仓库当前是**公开**的（origin → github.com/qwer-123-123/Roguelike，匿名可访问），
+#   而素材许可尚未确认，公开再分发有风险 —— 当初 Docs/Design/h5/assets/ 正是
+#   为避免这一点才从全部历史中摘除的。
+#
+# 处理：用户正在把仓库改为私有。**确认改为私有无误后，删掉下面这一行并提交素材。**
+#   （见 Docs/Plans/2026-09-22-计划-兵种系统与美术落地.md 的风险 R1）
+Assets/Art/
+
 # ---------- 本机调试产物 ----------
 # _tools/ 下的脚本要入仓（用来重新生成素材），但它们的输出与浏览器临时目录不入仓
 Docs/Design/_tools/out/
