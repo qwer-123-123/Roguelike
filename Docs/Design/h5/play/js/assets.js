@@ -108,6 +108,7 @@ function loadAll(onProgress){
       if (onProgress) onProgress(loadDone, total);
       if (loadDone === total) {
         if (failed) console.warn(`有 ${failed} 个素材加载失败 —— 多半是 assets/ 不在位（它未入 git，见 Docs/Design/README.md）`);
+        computeRefH();
         resolve(failed);
       }
     }
@@ -117,17 +118,37 @@ function loadAll(onProgress){
 /** 取一个精灵；缺失时返回 null，绘制处需判空 */
 function S(key){ return IMG[key] || null; }
 
+/* 参考帧高：同一角色的所有动画共用一个缩放比（见 _tools/build-sprites.ps1），
+   所以取一条「最贴合角色本体、不含特效」的条当基准就够 —— 玩家用手枪 idle，
+   敌人用 walk。绘制时以它为换算基准，保证 idle/walk/atk 之间角色大小一致。 */
+const REF_H = { unit: Object.create(null), enemy: Object.create(null) };
+function computeRefH(){
+  for (const body of ['man', 'girl']) {
+    const sp = IMG[`u:idle:${body}:gun`];
+    REF_H.unit[body] = sp ? sp.fh : 0;
+  }
+  for (const id of Object.keys(ENEMIES)) {
+    const sp = IMG[`e:walk:${id}`];
+    REF_H.enemy[id] = sp ? sp.fh : 0;
+  }
+}
+
 /**
  * 画整帧精灵。**在相机变换内调用，坐标与尺寸都必须是世界单位（格）**。
- * cx,cy = 世界坐标；hUnits = 显示高度（格）
- * rot = 弧度旋转（俯视角精灵按朝向旋转）；flip = 水平镜像
- * frame = 第几帧；alpha = 不透明度
+ * cx,cy   世界坐标
+ * hUnits  参考条的世界高度（格）—— 即 refH 那一帧对应多高
+ * refH    参考帧高（像素）；不传则退回该条自身的帧高
+ * rot/frame/alpha/flip 同前
+ *
+ * ★ 这里**不能**把帧高归一到 hUnits。攻击动画的原始帧更高（枪口火焰、刀光
+ *   往上延伸），归一化会把角色本体一起缩小 —— 表现就是「攻击时人物变小」。
+ *   正确做法是按固定像素换算，帧越高只是向上延伸得越多。
  */
-function drawSprite(ctx, key, cx, cy, hUnits, rot, frame, alpha, flip){
+function drawSprite(ctx, key, cx, cy, hUnits, refH, rot, frame, alpha, flip){
   const sp = S(key);
   if (!sp) return;
-  const dh = hUnits;
-  const dw = dh * (sp.fw / sp.fh);
+  const k = hUnits / (refH > 0 ? refH : sp.fh);   // 世界单位 / 像素
+  const dw = sp.fw * k, dh = sp.fh * k;
   const n = sp.frames;
   const fi = n > 1 ? (((frame % n) + n) % n) : 0;
 
@@ -136,7 +157,9 @@ function drawSprite(ctx, key, cx, cy, hUnits, rot, frame, alpha, flip){
   ctx.translate(cx, cy);
   if (rot) ctx.rotate(rot);
   if (flip) ctx.scale(-1, 1);
-  ctx.drawImage(sp.img, fi * sp.fw, 0, sp.fw, sp.fh, -dw/2, -dh/2, dw, dh);
+  // 合成时每一帧都是**底对齐**的，帧底 = 脚底，位置在各动画间一致。
+  // 以参考条的中线为锚点：参考动画正好居中，更高的动画向上延伸、脚不动。
+  ctx.drawImage(sp.img, fi * sp.fw, 0, sp.fw, sp.fh, -dw/2, -dh + hUnits*0.5, dw, dh);
   ctx.restore();
 }
 

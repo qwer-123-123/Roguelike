@@ -220,7 +220,7 @@ class Player {
     ctx.fill();
     ctx.restore();
 
-    drawSprite(ctx, this.spriteKey(), this.x, this.y, hUnits, rot, this.frame, alpha, flip);
+    drawSprite(ctx, this.spriteKey(), this.x, this.y, hUnits, REF_H.unit[this.cls.body], rot, this.frame, alpha, flip);
   }
 }
 
@@ -354,13 +354,14 @@ class Enemy {
     ctx.fill();
     ctx.restore();
 
-    drawSprite(ctx, key, this.x, this.y, h, this.rot || 0, this.frame, this.state === 'death' ? 0.85 : 1, false);
+    const refH = REF_H.enemy[this.def.id];
+    drawSprite(ctx, key, this.x, this.y, h, refH, this.rot || 0, this.frame, this.state === 'death' ? 0.85 : 1, false);
 
     // 受击闪白
     if (this.flash > 0){
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      drawSprite(ctx, key, this.x, this.y, h, this.rot || 0, this.frame, this.flash * 3, false);
+      drawSprite(ctx, key, this.x, this.y, h, refH, this.rot || 0, this.frame, this.flash * 3, false);
       ctx.restore();
     }
 
@@ -504,7 +505,7 @@ class Effect {
       const f = Math.min(n - 1, Math.floor(k * n));
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      drawSprite(ctx, 'vfx:explosion', this.x, this.y, (this.opt.h || 2.2), this.rot, f, 1 - k * 0.35, false);
+      drawSprite(ctx, 'vfx:explosion', this.x, this.y, (this.opt.h || 2.2), 0, this.rot, f, 1 - k * 0.35, false);
       ctx.restore();
     } else if (this.kind === 'hit'){
       ctx.save();

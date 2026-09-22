@@ -1,0 +1,41 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#141821;color:#cfe;font:12px Consolas,monospace;padding:10px}
+.row{display:flex;gap:8px;align-items:flex-end}
+.c{text-align:center}.c canvas{background:#1b2027;border:1px solid #333;display:block}
+</style></head><body><div id="o"></div><script>
+const B='../h5/assets/unit/';
+const HU=1.75, P=48;
+// 新逻辑：按参考帧高换算，帧底对齐
+function draw(g,sp,refH,fx){
+  const k=HU/refH, dw=sp.fw*k*P, dh=sp.fh*k*P;
+  g.drawImage(sp.img, fx*sp.fw,0,sp.fw,sp.fh, -dw/2, -dh+HU*P/2, dw, dh);
+}
+const o=document.getElementById('o');
+(async()=>{
+ const load=async f=>{const im=new Image();await new Promise(r=>{im.onload=r;im.onerror=r;im.src=B+f;});return im;};
+ const idle=await load('idle_man_gun.png'), walk=await load('walk_man_gun.png');
+ const atkG=await load('atk_man_gun.png'), atkK=await load('atk_man_knife.png'), atkF=await load('atk_man_flame.png');
+ const idK=await load('idle_man_knife.png'), walkK=await load('walk_man_knife.png');
+ const refH = idle.height/8;   // 参考帧高（手枪 idle）
+ const items=[
+   ['idle 手枪', idle, 8, 0, refH], ['walk 手枪', walk, 6, 0, refH],
+   ['atk 手枪',  atkG, 5, 2, refH],
+   ['idle 匕首', idK, 8, 0, idK.height/8], ['walk 匕首', walkK, 6, 0, idK.height/8],
+   ['atk 匕首',  atkK, 8, 4, idK.height/8],
+   ['atk 火焰',  atkF, 9, 4, idK.height/8],
+ ];
+ const row=document.createElement('div'); row.className='row';
+ for(const [label,im,n,fi,rH] of items){
+   const sp={img:im,fw:im.width/n,fh:im.height};
+   const d=document.createElement('div'); d.className='c';
+   const cv=document.createElement('canvas'); cv.width=240; cv.height=300;
+   const g=cv.getContext('2d');
+   g.strokeStyle='#e0603a'; g.beginPath(); g.moveTo(0,150+HU*P/2); g.lineTo(240,150+HU*P/2); g.stroke();
+   g.save(); g.translate(120,150); draw(g,sp,im.height,fi); g.restore();
+   const cap=document.createElement('div'); cap.textContent=label+` (${im.height}px)`;
+   d.appendChild(cv); d.appendChild(cap); row.appendChild(d);
+ }
+ o.appendChild(row);
+ document.title='done';
+})();
+</script></body></html>
