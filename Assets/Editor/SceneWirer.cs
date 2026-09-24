@@ -51,12 +51,72 @@ namespace Game.EditorTools
             WireRef(playerGo.GetComponent<PlayerCombatController>(), "projectilePrefab",
                     AssetDatabase.LoadAssetAtPath<GameObject>(ProjectilePrefabPath), log);
 
+            // ---- 3. 刷怪器的敌人池 ----
+            WireSpawnerPool(log);
+
             AssetDatabase.SaveAssets();
             EditorUtility.SetDirty(holder);
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
                 UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
 
             Debug.Log(log.ToString());
+        }
+
+        /// <summary>
+        /// 把 11 种敌人配置装进刷怪池。
+        /// **BOSS 不放进随机池** —— 它们由波次触发（迭代 3），随机刷出来会破坏节奏。
+        /// 权重按 H5 早期波次的敌人构成比例：杂兵多、精英中、重装少。
+        /// </summary>
+        private static void WireSpawnerPool(System.Text.StringBuilder log)
+        {
+            var spawner = Object.FindObjectOfType<EnemySpawner>();
+            if (spawner == null)
+            {
+                Debug.LogWarning("[菌核狂潮] 场景里找不到 EnemySpawner，跳过敌人池接线");
+                return;
+            }
+
+            // 权重表：与 EnemyTable 的 id 对应
+            var weights = new System.Collections.Generic.Dictionary<string, int>
+            {
+                { "z1", 10 }, { "z2", 10 }, { "z3", 10 }, { "z4", 10 },
+                { "z5", 5 },  { "z6", 5 },
+                { "z7", 2 },  { "z8", 2 },
+            };
+
+            var pool = new System.Collections.Generic.List<EnemyDefinition>();
+            var weightList = new System.Collections.Generic.List<int>();
+            foreach (var kv in weights)
+            {
+                var def = AssetDatabase.LoadAssetAtPath<EnemyDefinition>($"Assets/Configs/Enemies/Enemy_{kv.Key}.asset");
+                if (def == null)
+                {
+                    Debug.LogWarning($"[菌核狂潮] 缺少敌人配置 Enemy_{kv.Key}，跳过");
+                    continue;
+                }
+                pool.Add(def);
+                weightList.Add(kv.Value);
+            }
+
+            var so = new SerializedObject(spawner);
+            var poolProp = so.FindProperty("enemyPool");
+            var weightProp = so.FindProperty("enemyWeights");
+            if (poolProp == null || weightProp == null)
+            {
+                Debug.LogWarning("[菌核狂潮] EnemySpawner 上找不到 enemyPool / enemyWeights 字段");
+                return;
+            }
+
+            poolProp.arraySize = pool.Count;
+            weightProp.arraySize = weightList.Count;
+            for (int i = 0; i < pool.Count; i++)
+            {
+                poolProp.GetArrayElementAtIndex(i).objectReferenceValue = pool[i];
+                weightProp.GetArrayElementAtIndex(i).intValue = weightList[i];
+            }
+            so.ApplyModifiedProperties();
+
+            log.AppendLine($"  EnemySpawner.enemyPool ← {pool.Count} 种敌人（BOSS 除外，由波次触发）");
         }
 
         /// <summary>确保根节点下有一个 Visual 子节点，挂着 SpriteRenderer + CharacterView。</summary>

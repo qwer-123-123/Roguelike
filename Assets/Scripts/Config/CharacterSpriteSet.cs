@@ -23,7 +23,7 @@ namespace Game
     ///     偏移越大，角色只是向上延伸、脚不动。
     /// </summary>
     [CreateAssetMenu(fileName = "Sprites_", menuName = "菌核狂潮/角色动画集 CharacterSpriteSet")]
-    public class CharacterSpriteSet : ScriptableObject
+    public class CharacterSpriteSet : ScriptableObject, ISpriteProvider
     {
         [System.Serializable]
         public class Clip
@@ -49,6 +49,18 @@ namespace Game
         public Clip walk = new Clip();
         public Clip attack = new Clip();
         public Clip death = new Clip();
+
+        /// <summary><see cref="ISpriteProvider"/> 实现。</summary>
+        public float UniformScale => uniformScale;
+
+        public bool TryGetClip(AnimState state, out Sprite[] frames, out float frameDuration, out float offsetY)
+        {
+            var c = GetClip(state);
+            frames = c != null ? c.frames : null;
+            frameDuration = c != null ? c.frameDuration : 0.1f;
+            offsetY = c != null ? c.offsetY : 0f;
+            return c != null && c.IsValid;
+        }
 
         /// <summary>取某个状态的动画数据；未配置时返回 null。</summary>
         public Clip GetClip(AnimState state)

@@ -7,6 +7,9 @@ namespace Game
     /// 角色表现（挂在实体根节点下的 <c>Visual</c> 子节点上）。
     /// 承担：帧动画、朝向旋转、水平翻转、垂直锚点、受击闪色。
     ///
+    /// 数据来源是 <see cref="ISpriteProvider"/> —— 玩家兵种与敌人各实现一份，
+    /// 本组件不关心加载的是哪一边。见该接口的注释说明为什么不用共用同一个 SO 类型。
+    ///
     /// ★ 为什么是脚本逐帧，而不是 Animator + AnimationClip：
     ///   1) <c>unity-skills</c> 没有创建 AnimationClip 的技能（<c>animator_create_clip</c>
     ///      实测不存在），只能写编辑器脚本批量生成 clip
@@ -30,8 +33,11 @@ namespace Game
         [Tooltip("受击闪色衰减速度（每秒）")]
         [SerializeField] private float flashDecay = 6f;
 
-        private CharacterSpriteSet spriteSet;
-        private CharacterSpriteSet.Clip clip;
+        private ISpriteProvider provider;
+
+        private Sprite[] frames;
+        private float frameDuration = 0.1f;
+        private float clipOffsetY;
 
         private AnimState state = AnimState.Idle;
         private float timer;
@@ -62,16 +68,16 @@ namespace Game
         {
             get
             {
-                if (clip == null || clip.frames == null || clip.frames.Length == 0) return 0f;
-                if (clip.frames.Length == 1) return 1f;
-                float per = Mathf.Max(0.0001f, clip.frameDuration);
-                float total = per * clip.frames.Length;
+                if (frames == null || frames.Length == 0) return 0f;
+                if (frames.Length == 1) return 1f;
+                float per = Mathf.Max(0.0001f, frameDuration);
+                float total = per * frames.Length;
                 return Mathf.Clamp01((frameIndex * per + timer) / total);
             }
         }
 
         /// <summary>当前 clip 的垂直锚点（世界单位）。自检断言「idle 与 attack 脚底一致」用。</summary>
-        public float OffsetY => clip != null ? clip.offsetY : 0f;
+        public float OffsetY => clipOffsetY;
 
         /// <summary>当前朝向（弧度）。</summary>
         public float AimRadians => aimRadians;
@@ -84,11 +90,11 @@ namespace Game
 
         // ================= 数据绑定 =================
 
-        /// <summary>绑定兵种动画集。绑定时会立刻切到 Idle。</summary>
-        public void Configure(CharacterSpriteSet set)
+        /// <summary>绑定动画数据源（兵种动画集或敌人配置）。绑定时立刻切到 Idle。</summary>
+        public void Configure(ISpriteProvider source)
         {
-            spriteSet = set;
-            uniformScale = set != null ? set.uniformScale : 1f;
+            provider = source;
+            uniformScale = source != null ? source.UniformScale : 1f;
             Play(AnimState.Idle, true);
         }
 
@@ -103,13 +109,15 @@ namespace Game
             if (!restart && state == next && playing) return;
 
             state = next;
-            clip = spriteSet != null ? spriteSet.GetClip(next) : null;
+            playing = provider != null
+                      && provider.TryGetClip(next, out frames, out frameDuration, out clipOffsetY);
+            if (!playing) { frames = null; clipOffsetY = 0f; }
+
             timer = 0f;
             frameIndex = 0;
             finished = false;
             // 只有 Idle / Walk 循环；Attack / Death 播完停在最后一帧
             looping = next == AnimState.Idle || next == AnimState.Walk;
-            playing = clip != null && clip.IsValid;
 
             ApplyFrame();
             ApplyTransform();
@@ -119,7 +127,7 @@ namespace Game
         public void ResetView()
         {
             state = AnimState.Idle;
-            clip = null;
+            frames = null;
             timer = 0f;
             frameIndex = 0;
             playing = false;
@@ -128,7 +136,8 @@ namespace Game
             flash = 0f;
             flip = false;
             aimRadians = -Mathf.PI / 2f;
-            uniformScale = spriteSet != null ? spriteSet.uniformScale : 1f;
+            clipOffsetY = 0f;
+            uniformScale = provider != null ? provider.UniformScale : 1f;
 
             if (spriteRenderer != null)
             {
@@ -159,13 +168,13 @@ namespace Game
         private void Update()
         {
             // 阶段门禁：开始界面与死亡后世界冻结（这是全工程统一的冻结机制）。
-            // 例外：死亡动画在 GameOver 阶段允许播完，否则玩家死亡瞬间动画会僵在半路。
+            // 例外：死亡动画在 GameOver 阶段允许播完，否则死亡瞬间动画会僵在半路。
             var phase = this.GetModel<IGameStateModel>().Phase.Value;
             bool allow = phase == GamePhase.Playing ||
                          (phase == GamePhase.GameOver && state == AnimState.Death);
             if (!allow) return;
 
-            Advance(deltaTime: Time.deltaTime);
+            Advance(Time.deltaTime);
 
             if (flash > 0f)
             {
@@ -178,12 +187,12 @@ namespace Game
         /// <summary>推进动画。<paramref name="deltaTime"/> 由调用方给，便于自检用固定步长驱动。</summary>
         public void Advance(float deltaTime)
         {
-            if (!playing || clip == null || clip.frames == null || clip.frames.Length == 0) return;
+            if (!playing || frames == null || frames.Length == 0) return;
 
-            int count = clip.frames.Length;
+            int count = frames.Length;
             if (count == 1) { finished = !looping; return; }
 
-            float per = Mathf.Max(0.0001f, clip.frameDuration);
+            float per = Mathf.Max(0.0001f, frameDuration);
             timer += deltaTime;
             while (timer >= per)
             {
@@ -200,19 +209,16 @@ namespace Game
 
         private void ApplyFrame()
         {
-            if (spriteRenderer == null || clip == null || clip.frames == null) return;
-            int count = clip.frames.Length;
-            if (count == 0) return;
-            int i = Mathf.Clamp(frameIndex, 0, count - 1);
-            spriteRenderer.sprite = clip.frames[i];
+            if (spriteRenderer == null || frames == null || frames.Length == 0) return;
+            spriteRenderer.sprite = frames[Mathf.Clamp(frameIndex, 0, frames.Length - 1)];
         }
 
         /// <summary>把缩放 / 旋转 / 垂直锚点写到 Visual 的 Transform 上。</summary>
         private void ApplyTransform()
         {
             transform.localScale = new Vector3(flip ? -uniformScale : uniformScale, uniformScale, 1f);
-            // 锚点：帧越高 offsetY 越大，角色向上延伸、脚底不动（见 CharacterSpriteSet 注释）
-            transform.localPosition = new Vector3(0f, clip != null ? clip.offsetY : 0f, 0f);
+            // 锚点：帧越高 offsetY 越大，角色向上延伸、脚底不动（见 ISpriteProvider 注释）
+            transform.localPosition = new Vector3(0f, clipOffsetY, 0f);
             transform.localRotation = Quaternion.Euler(0f, 0f, aimRadians * Mathf.Rad2Deg + aimRotationOffsetDeg);
         }
     }

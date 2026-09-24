@@ -8,6 +8,9 @@ namespace Game
     /// 敌人（表现层 MonoBehaviour，IController）：向玩家追击、受击扣血、死亡掉落并回收对象池。
     /// 维护静态活跃敌人表，供玩家自动瞄准与攻击模型查询。
     ///
+    /// 数值全部来自 <see cref="EnemyDefinition"/>（11 种敌人 = 11 份配置 + 11 个预制体），
+    /// 本类不再持有任何可调数值 —— 消掉工程遗留项「数值硬编码在预制体的 SerializeField 上」。
+    ///
     /// 实现 <see cref="IEnemyTarget"/> 供 System 层的攻击模型使用 —— 依赖方向是
     /// 「Controller 实现 System 定义的接口」，System 不反向引用本类。
     ///
@@ -16,19 +19,25 @@ namespace Game
     /// </summary>
     public class EnemyController : MonoBehaviour, IController, IEnemyTarget
     {
-        [Header("数值（迭代 2 会迁到 EnemyDefinition 配置表）")]
-        [SerializeField] private float moveSpeed = 2f;
-        [SerializeField] private float maxHealth = 3f;
-        [SerializeField] private float touchDamage = 1f;
-        [Tooltip("接触判定的额外余量：实际接触距离 = 本敌半径 + 玩家半径 + 该值")]
-        [SerializeField] private float contactPadding = 0.32f;
-        [SerializeField] private float hitRadius = 0.4f;
+        [Header("配置")]
+        [SerializeField] private EnemyDefinition definition;
+
+        [Header("表现")]
+        [SerializeField] private CharacterView view;
+        [Tooltip("血条底（纯色 sprite，PPU=1，靠 localScale 定尺寸）")]
+        [SerializeField] private SpriteRenderer hpBarBg;
+        [SerializeField] private SpriteRenderer hpBarFill;
+
+        [Header("掉落")]
         [SerializeField] private GameObject expDropPrefab;
 
-        [Header("表现（迭代 2 接美术；为空时退化为占位图元）")]
-        [SerializeField] private CharacterView view;
+        [Header("血条尺寸（世界单位）")]
+        [SerializeField] private float barWidth = 0.9f;
+        [SerializeField] private float barHeight = 0.09f;
+        [SerializeField] private float barOffsetY = 0.85f;
 
         private float currentHealth;
+        private float maxHealth;
         private Transform player;
         private bool alive;
 
@@ -41,20 +50,21 @@ namespace Game
         private float burnTickAccum;
 
         private float attackCooldown;
-        private const float TouchDamageInterval = 1f;
 
-        private static readonly HashSet<EnemyController> ActiveEnemies = new();
-        private static readonly List<EnemyController> ActiveList = new();
+        private static readonly HashSet<EnemyController> ActiveEnemies = new HashSet<EnemyController>();
+        private static readonly List<EnemyController> ActiveList = new List<EnemyController>();
 
         /// <summary>当前所有活跃敌人（只读）。攻击模型通过它做范围查询。</summary>
         public static IReadOnlyList<EnemyController> All => ActiveList;
 
         public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
+        public EnemyDefinition Definition => definition;
+
         // ================= IEnemyTarget =================
 
         public Vector2 Position => transform.position;
-        public float Radius => hitRadius;
+        public float Radius => definition != null ? definition.hitRadius : 0.4f;
         public bool IsAlive => alive;
 
         public void ApplyKnockback(Vector2 direction, float strength)
@@ -76,18 +86,14 @@ namespace Game
         {
             EnemyController nearest = null;
             float minSqr = float.MaxValue;
-            foreach (var e in ActiveList)
+            for (int i = 0; i < ActiveList.Count; i++)
             {
+                var e = ActiveList[i];
                 // 防御：场景重载后残留的销毁引用，直接跳过
                 if (e == null || !e.isActiveAndEnabled || !e.alive) continue;
                 float sqr = (e.transform.position - position).sqrMagnitude;
-                if (sqr < minSqr)
-                {
-                    minSqr = sqr;
-                    nearest = e;
-                }
+                if (sqr < minSqr) { minSqr = sqr; nearest = e; }
             }
-
             return nearest;
         }
 
@@ -98,26 +104,38 @@ namespace Game
             ActiveList.Clear();
         }
 
-        public void Init(Transform player)
+        /// <summary>由刷怪器注入本实例代表哪种敌人。</summary>
+        public void Init(EnemyDefinition def, Transform player)
         {
+            definition = def;
             this.player = player;
+
+            maxHealth = def != null ? def.maxHp : 10f;
+            currentHealth = maxHealth;
+
+            knockback = Vector2.zero;
+            burnTimeLeft = 0f; burnDps = 0f; burnTickAccum = 0f;
+            attackCooldown = 0f;
+
+            if (view != null)
+            {
+                view.Configure(def);   // def 实现 ISpriteProvider
+            }
+
+            LayoutHealthBar();
+            RefreshHealthBar();
         }
 
         private void OnEnable()
         {
-            currentHealth = maxHealth;
             alive = true;
-            knockback = Vector2.zero;
-            burnTimeLeft = 0f;
-            burnDps = 0f;
-            burnTickAccum = 0f;
-            attackCooldown = 0f;
-
             if (ActiveEnemies.Add(this)) ActiveList.Add(this);
 
-            // 对象池复用的清残影：必须显式复位可视状态，不能依赖 OnEnable 的默认值
+            // 对象池复用必须完整复位可视状态，不能依赖 OnEnable 的默认值
             // （工程约定：渲染更新必须完整清除并重绘动态层，禁止增量更新导致残影）
             view?.ResetView();
+            if (hpBarFill != null) hpBarFill.enabled = false;
+            if (hpBarBg != null) hpBarBg.enabled = false;
         }
 
         private void OnDisable()
@@ -147,33 +165,62 @@ namespace Game
 
             Vector3 toPlayer = player.position - transform.position;
             Vector3 dir = toPlayer.normalized;
-            transform.Translate(dir * (moveSpeed * dt));
+            transform.Translate(dir * (MoveSpeed * dt));
 
+            ApplySeparation(dt);
             UpdateView(dir);
+            TickContact(toPlayer, dt);
+        }
 
-            // 距离检测：接触到玩家时施加伤害（带冷却），无需物理组件。
-            // 半径改成「本敌半径 + 玩家半径 + 余量」—— 原先是固定的 0.6²，
-            // 那是照 Cube 的 1×1 视觉调的，不参数化的话兵种的受击半径差异形同虚设。
-            attackCooldown -= dt;
-            if (attackCooldown <= 0f)
+        private float MoveSpeed => definition != null ? definition.moveSpeed : 1.5f;
+        private float TouchDamage => definition != null ? definition.touchDamage : 5f;
+        private float ContactInterval => definition != null ? definition.contactInterval : 1f;
+
+        /// <summary>
+        /// 与其它敌人互相推开，避免叠成一坨。
+        /// H5 原型里同一问题出现过：初版分离系数 0.55 太弱，敌人全叠在玩家身上糊成一团，
+        /// 调到 3.2 才散得开。系数在 GameConfig 里。
+        /// </summary>
+        private void ApplySeparation(float dt)
+        {
+            var cfg = ConfigHolder?.Config;
+            float strength = cfg != null ? cfg.enemySeparation : 3.2f;
+            float radiusFactor = cfg != null ? cfg.enemySeparationRadiusFactor : 1.18f;
+
+            float sx = 0f, sy = 0f;
+            for (int i = 0; i < ActiveList.Count; i++)
             {
-                float reach = hitRadius + PlayerRadius() + contactPadding;
-                if (toPlayer.sqrMagnitude < reach * reach)
-                {
-                    var playerCtrl = player.GetComponent<PlayerController>();
-                    if (playerCtrl != null)
-                    {
-                        playerCtrl.TakeDamage(touchDamage);
-                        attackCooldown = TouchDamageInterval;
-                    }
-                }
+                var o = ActiveList[i];
+                if (o == null || o == this || !o.alive) continue;
+
+                float ox = transform.position.x - o.transform.position.x;
+                float oy = transform.position.y - o.transform.position.y;
+                float rr = (Radius + o.Radius) * radiusFactor;
+                float dd = ox * ox + oy * oy;
+                if (dd <= 1e-6f || dd >= rr * rr) continue;
+
+                float dl = Mathf.Sqrt(dd);
+                float push = 1f - dl / rr;
+                sx += ox / dl * push;
+                sy += oy / dl * push;
+            }
+
+            if (sx != 0f || sy != 0f)
+            {
+                transform.Translate(new Vector3(sx, sy, 0f) * (strength * dt));
             }
         }
 
-        private float PlayerRadius()
+        private GameConfigHolder cachedHolder;
+
+        private GameConfigHolder ConfigHolder
         {
-            var stats = this.GetSystem<IPlayerStatSystem>();
-            return stats != null && stats.IsBound ? stats.HitRadius : 0.4f;
+            get
+            {
+                // 缓存：这一段每次分离判定都会走，不能每帧 FindObjectOfType
+                if (cachedHolder == null) cachedHolder = Object.FindObjectOfType<GameConfigHolder>();
+                return cachedHolder;
+            }
         }
 
         private void UpdateView(Vector3 dir)
@@ -181,6 +228,29 @@ namespace Game
             if (view == null) return;
             view.SetAim(Mathf.Atan2(dir.y, dir.x));
             view.Play(AnimState.Walk);
+        }
+
+        private void TickContact(Vector3 toPlayer, float dt)
+        {
+            attackCooldown -= dt;
+            if (attackCooldown > 0f) return;
+
+            // 接触距离 = 本敌半径 + 玩家半径 + 余量。
+            // 之前是固定的 0.6²，那是照 Cube 的 1×1 视觉调的；不参数化的话
+            // 兵种的受击半径差异形同虚设。
+            var cfg = ConfigHolder?.Config;
+            float padding = cfg != null ? cfg.contactPadding : 0.32f;
+            var stats = this.GetSystem<IPlayerStatSystem>();
+            float playerRadius = stats != null && stats.IsBound ? stats.HitRadius : 0.4f;
+
+            float reach = Radius + playerRadius + padding;
+            if (toPlayer.sqrMagnitude >= reach * reach) return;
+
+            var playerCtrl = player.GetComponent<PlayerController>();
+            if (playerCtrl == null) return;
+
+            playerCtrl.TakeDamage(TouchDamage);
+            attackCooldown = ContactInterval;
         }
 
         private void TickBurn(float dt)
@@ -201,17 +271,15 @@ namespace Game
             if (burnTimeLeft <= 0f) burnDps = 0f;
         }
 
-        // ================= 受击 / 死亡 =================
+        // ================= 受限 / 死亡 =================
 
         public void TakeDamage(float damage)
         {
             if (!alive) return;
             currentHealth -= damage;
             view?.Flash(0.8f);
-            if (currentHealth <= 0f)
-            {
-                Die();
-            }
+            RefreshHealthBar();
+            if (currentHealth <= 0f) Die();
         }
 
         private void Die()
@@ -228,6 +296,48 @@ namespace Game
             }
 
             pool.Despawn(gameObject);
+        }
+
+        // ================= 血条 =================
+        // 用两张 PPU=1 的纯色 sprite 拼成：底条 + 填充条。
+        // 填充条靠 localScale.x 与左端对齐的 localPosition 表达比例 ——
+        // 不用 Image.fillAmount 是因为工程约定里那条「无 sprite 的 Image 上
+        // fillAmount 不生效」，而且这是世界空间的 SpriteRenderer，不是 UI。
+
+        private void LayoutHealthBar()
+        {
+            float w = definition != null && definition.IsBoss ? barWidth * 1.8f : barWidth;
+
+            if (hpBarBg != null)
+            {
+                hpBarBg.transform.localPosition = new Vector3(0f, barOffsetY, 0f);
+                hpBarBg.transform.localScale = new Vector3(w, barHeight, 1f);
+            }
+            if (hpBarFill != null)
+            {
+                hpBarFill.transform.localPosition = new Vector3(0f, barOffsetY, 0f);
+                hpBarFill.transform.localScale = new Vector3(w, barHeight * 0.72f, 1f);
+            }
+        }
+
+        private void RefreshHealthBar()
+        {
+            bool show = alive && maxHealth > 0f && currentHealth < maxHealth;
+            // BOSS 始终显示血条（满血也显示，便于玩家找目标）
+            if (definition != null && definition.IsBoss) show = alive;
+
+            if (hpBarBg != null) hpBarBg.enabled = show;
+            if (hpBarFill == null) return;
+            hpBarFill.enabled = show;
+            if (!show) return;
+
+            float w = definition != null && definition.IsBoss ? barWidth * 1.8f : barWidth;
+            float ratio = Mathf.Clamp01(currentHealth / maxHealth);
+            float fillW = w * ratio;
+
+            hpBarFill.transform.localScale = new Vector3(fillW, barHeight * 0.72f, 1f);
+            // 从左端对齐：底条中心在 0，填充条中心应在 -w/2 + fillW/2
+            hpBarFill.transform.localPosition = new Vector3(-w * 0.5f + fillW * 0.5f, barOffsetY, 0f);
         }
     }
 }

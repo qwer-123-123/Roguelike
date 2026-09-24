@@ -28,6 +28,7 @@ namespace Game.EditorTools
         private const string SpriteFolder = ConfigRoot + "/CharacterSprites";
         private const string BodyFolder = ConfigRoot + "/Bodies";
         private const string WeaponFolder = ConfigRoot + "/Weapons";
+        private const string EnemyFolder = ConfigRoot + "/Enemies";
 
         // 武器顺序即兵种索引的次序（与 H5 data.js 的 WEAPON_ORDER 一致）
         private static readonly string[] WeaponOrder = { "knife", "bat", "gun", "riffle", "flame" };
@@ -76,6 +77,16 @@ namespace Game.EditorTools
 
             var config = LoadOrCreate<GameConfig>(ConfigRoot + "/GameConfig.asset");
             EditorUtility.SetDirty(config);
+
+            // 敌人：11 种（1~5 级含 3 只 BOSS）
+            EnsureFolder(EnemyFolder);
+            int enemyCount = 0;
+            foreach (var e in EnemyTable)
+            {
+                CreateEnemy(e, manifest);
+                enemyCount++;
+            }
+            Debug.Log($"[菌核狂潮] 敌人配置已生成：{enemyCount} 种");
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -213,6 +224,19 @@ namespace Game.EditorTools
             return clip;
         }
 
+        /// <summary>
+        /// 敌人版的 clip 构造。敌人的 Clip 是 EnemyDefinition 里的独立嵌套类型
+        /// （结构相同但语义不同 —— 兵种有 body/weapon，敌人有等级/血量），
+        /// 两者不共用同一个类型，所以这里各建一份。
+        /// </summary>
+        private static EnemyDefinition.Clip BuildEnemyClip(string folder, Dictionary<string, ManifestRow> manifest)
+        {
+            var clip = new EnemyDefinition.Clip();
+            clip.frames = LoadSprites(folder);
+            clip.offsetY = RowOf(manifest, folder).offsetY;
+            return clip;
+        }
+
         /// <summary>按文件名排序加载一个目录下的全部精灵（000.png, 001.png …）。</summary>
         private static Sprite[] LoadSprites(string folder)
         {
@@ -312,6 +336,73 @@ namespace Game.EditorTools
         private static ManifestRow RowOf(Dictionary<string, ManifestRow> manifest, string folder)
         {
             return manifest.TryGetValue(folder, out var row) ? row : new ManifestRow { scale = 1f, offsetY = 0f };
+        }
+
+        // ================= 敌人 =================
+
+        private class EnemyRow
+        {
+            public string id, name;
+            public int level;
+            public EnemyKind kind;
+            public float hp, speed, damage, radius, worldHeight, hitAt, contactInterval;
+            public int exp, money, worth;
+        }
+
+        /// <summary>
+        /// 11 种敌人的数值，原样抄自 H5 原型 <c>data.js</c> 的 ENEMIES。
+        /// 唯一偏离：BOSS 血量沿用 H5 已按 1/2.4 缩放过的值（原文标注了「未实测」）。
+        /// </summary>
+        private static readonly EnemyRow[] EnemyTable =
+        {
+            new EnemyRow{ id="z1", name="ZOMBIE A", level=1, kind=EnemyKind.Minion, hp=30f,  speed=1.6f,  damage=6f,  exp=5,   money=2,   radius=0.34f, worldHeight=1.35f, hitAt=0.35f, contactInterval=1.0f  },
+            new EnemyRow{ id="z2", name="ZOMBIE B", level=1, kind=EnemyKind.Minion, hp=30f,  speed=1.6f,  damage=6f,  exp=5,   money=2,   radius=0.34f, worldHeight=1.35f, hitAt=0.35f, contactInterval=1.0f  },
+            new EnemyRow{ id="z3", name="ZOMBIE C", level=1, kind=EnemyKind.Minion, hp=34f,  speed=1.5f,  damage=6f,  exp=5,   money=2,   radius=0.36f, worldHeight=1.40f, hitAt=0.35f, contactInterval=1.0f  },
+            new EnemyRow{ id="z4", name="ZOMBIE D", level=1, kind=EnemyKind.Minion, hp=34f,  speed=1.5f,  damage=6f,  exp=5,   money=2,   radius=0.36f, worldHeight=1.40f, hitAt=0.35f, contactInterval=1.0f  },
+            new EnemyRow{ id="z5", name="ARMY",     level=2, kind=EnemyKind.Elite,  hp=70f,  speed=1.8f,  damage=12f, exp=14,  money=6,   radius=0.44f, worldHeight=1.65f, hitAt=0.40f, contactInterval=1.1f  },
+            new EnemyRow{ id="z6", name="COP",      level=2, kind=EnemyKind.Elite,  hp=80f,  speed=1.7f,  damage=14f, exp=16,  money=7,   radius=0.46f, worldHeight=1.70f, hitAt=0.40f, contactInterval=1.1f  },
+            new EnemyRow{ id="z7", name="BIG HANDS",level=3, kind=EnemyKind.Heavy,  hp=180f, speed=1.2f,  damage=24f, exp=40,  money=14,  radius=0.60f, worldHeight=2.10f, hitAt=0.45f, contactInterval=1.3f  },
+            new EnemyRow{ id="z8", name="BIG HEAD", level=3, kind=EnemyKind.Heavy,  hp=200f, speed=1.1f,  damage=26f, exp=44,  money=15,  radius=0.62f, worldHeight=2.15f, hitAt=0.45f, contactInterval=1.3f  },
+            new EnemyRow{ id="boss1", name="BOSS 01",  level=4, kind=EnemyKind.Boss,  hp=900f,  speed=1.0f,  damage=40f, exp=300,  money=120, radius=0.95f, worldHeight=3.40f, hitAt=0.50f, contactInterval=1.35f, worth=12 },
+            new EnemyRow{ id="boss2", name="BOSS 02",  level=4, kind=EnemyKind.Boss,  hp=1100f, speed=0.95f, damage=44f, exp=340,  money=150, radius=0.98f, worldHeight=3.50f, hitAt=0.50f, contactInterval=1.25f, worth=12 },
+            new EnemyRow{ id="mega",  name="MEGA BOSS",level=5, kind=EnemyKind.Final, hp=2600f, speed=0.8f,  damage=70f, exp=1200, money=400, radius=1.45f, worldHeight=5.00f, hitAt=0.55f, contactInterval=1.5f,  worth=12 },
+        };
+
+        private static void CreateEnemy(EnemyRow row, Dictionary<string, ManifestRow> manifest)
+        {
+            var so = LoadOrCreate<EnemyDefinition>($"{EnemyFolder}/Enemy_{row.id}.asset");
+
+            so.enemyId = row.id;
+            so.displayName = row.name;
+            so.level = row.level;
+            so.kind = row.kind;
+            so.maxHp = row.hp;
+            so.moveSpeed = row.speed;
+            so.touchDamage = row.damage;
+            so.contactInterval = row.contactInterval;
+            so.expReward = row.exp;
+            so.moneyReward = row.money;
+            so.hitRadius = row.radius;
+            so.worldHeight = row.worldHeight;
+            so.hitAt = row.hitAt;
+            so.waveWorth = row.worth > 0 ? row.worth : 1;
+
+            string root = $"{ArtRoot}/Enemies/{row.id}";
+            so.walk   = BuildEnemyClip($"{root}/walk",  manifest);
+            so.attack = BuildEnemyClip($"{root}/atk",   manifest);
+            so.death  = BuildEnemyClip($"{root}/death", manifest);
+            so.uniformScale = ScaleOf(manifest, row.id);
+
+            so.walk.frameDuration   = 0.085f;
+            so.attack.frameDuration = 1f / 18f;
+            so.death.frameDuration  = 0.1f;
+
+            EditorUtility.SetDirty(so);
+
+            if (!so.Validate(out var err))
+            {
+                Debug.LogError($"[菌核狂潮] 敌人 {row.id} 配置校验失败：{err}");
+            }
         }
 
         // ================= 工具 =================
