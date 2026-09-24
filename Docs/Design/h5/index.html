@@ -816,21 +816,52 @@ footer{max-width:1180px; margin:0 auto; padding:26px 22px 60px; color:var(--mut)
   <div class="grid2" id="enemyCards"></div>
 
   <h2>波次接入表</h2>
+  <div class="note">
+    <b>推进依据 = 击杀配额填满</b>（主），每波时长<b>仅作超时兜底</b>。BOSS 在场时不刷杂兵，
+    所以 BOSS 波的节奏是「先杀 BOSS 拿一大截进度 → 再清杂兵补满」。<br>
+    <b>击杀 BOSS 折算 <code>BOSS_WORTH = 12</code> 只</b> —— 配额里已含这部分折算值。
+  </div>
   <div class="tw"><table>
-    <thead><tr><th>波次</th><th>刷怪构成</th><th>同时上限</th><th>难度系数</th><th>素材映射</th></tr></thead>
+    <thead><tr><th>波次</th><th>刷怪构成</th><th>同时上限</th><th>每波时长</th><th>击杀配额</th><th>难度系数</th><th>素材映射</th></tr></thead>
     <tbody>
-      <tr><td>1–2</td><td>1 级杂兵 ×4 种</td><td class="num">12</td><td class="num">1.0</td><td class="file">1LVL/Zombie1~4</td></tr>
-      <tr><td>3</td><td>1 级杂兵 + 少量精英</td><td class="num">16</td><td class="num">1.3</td><td class="file">+ 2LVL/Army_zombie</td></tr>
-      <tr><td>4–5</td><td>精英占比升至 30%</td><td class="num">20</td><td class="num">1.7</td><td class="file">+ 2LVL/Cop_Zombie</td></tr>
-      <tr><td>6–7</td><td>引入 3 级重装（每波 1~2 只）</td><td class="num">24</td><td class="num">2.2</td><td class="file">+ 3LVL/*</td></tr>
-      <tr><td>8</td><td>重装数量翻倍，无杂兵间隔</td><td class="num">28</td><td class="num">2.8</td><td class="file">3LVL/* 为主</td></tr>
-      <tr><td>9</td><td><b>BOSS 01</b> + 杂兵</td><td class="num">20</td><td class="num">3.2</td><td class="file">4LVL/Boss1</td></tr>
-      <tr><td>10</td><td><b>BOSS 02</b> + 精英</td><td class="num">22</td><td class="num">3.6</td><td class="file">4LVL/Boss2</td></tr>
-      <tr><td>11+</td><td><b>巨型 BOSS</b> 无限循环（血量递增）</td><td class="num">30</td><td class="num">4.0 →</td><td class="file">5LVL</td></tr>
+      <tr><td class="num">1</td><td>1 级杂兵 ×4 种</td><td class="num">12</td><td class="num">22s</td><td class="num"><b>15</b></td><td class="num">1.0</td><td class="file">1LVL/Zombie1~4</td></tr>
+      <tr><td class="num">2</td><td>1 级杂兵 ×4 种</td><td class="num">12</td><td class="num">22s</td><td class="num"><b>15</b></td><td class="num">1.0</td><td class="file">同上</td></tr>
+      <tr><td class="num">3</td><td>杂兵 + 少量精英</td><td class="num">16</td><td class="num">22s</td><td class="num"><b>17</b></td><td class="num">1.3</td><td class="file">+ 2LVL/Army_zombie</td></tr>
+      <tr><td class="num">4</td><td>精英占比升至 30%</td><td class="num">20</td><td class="num">22s</td><td class="num"><b>19</b></td><td class="num">1.7</td><td class="file">+ 2LVL/Cop_Zombie</td></tr>
+      <tr><td class="num">5</td><td>精英占比升至 30%</td><td class="num">20</td><td class="num">22s</td><td class="num"><b>19</b></td><td class="num">1.7</td><td class="file">同上</td></tr>
+      <tr><td class="num">6</td><td>引入 3 级重装（每波 1~2 只）</td><td class="num">24</td><td class="num">24s</td><td class="num"><b>23</b></td><td class="num">2.2</td><td class="file">+ 3LVL/*</td></tr>
+      <tr><td class="num">7</td><td>引入 3 级重装（每波 1~2 只）</td><td class="num">24</td><td class="num">24s</td><td class="num"><b>23</b></td><td class="num">2.2</td><td class="file">同上</td></tr>
+      <tr><td class="num">8</td><td>重装数量翻倍，无杂兵间隔</td><td class="num">28</td><td class="num">24s</td><td class="num"><b>26</b></td><td class="num">2.8</td><td class="file">3LVL/* 为主</td></tr>
+      <tr><td class="num">9</td><td><b>BOSS 01</b> + 杂兵</td><td class="num">20</td><td class="num">32s</td><td class="num"><b>26</b></td><td class="num">3.2</td><td class="file">4LVL/Boss1</td></tr>
+      <tr><td class="num">10</td><td><b>BOSS 02</b> + 精英</td><td class="num">22</td><td class="num">32s</td><td class="num"><b>28</b></td><td class="num">3.6</td><td class="file">4LVL/Boss2</td></tr>
+      <tr><td class="num">11</td><td><b>巨型 BOSS</b> + 重装</td><td class="num">30</td><td class="num">36s</td><td class="num"><b>32</b></td><td class="num">4.0</td><td class="file">5LVL</td></tr>
+      <tr><td class="num">12+</td><td><b>巨型 BOSS</b> 无限循环</td><td class="num">30</td><td class="num">36s</td><td class="num">32 + (n−11)×4</td><td class="num">4.0 + (n−11)×0.45</td><td class="file">5LVL</td></tr>
     </tbody>
   </table></div>
+
+  <h3>配额怎么来的（改动前必读）</h3>
+  <div class="note warn">
+    <b>配额不是拍脑袋定的，是按刷怪速率反推再实测标定的。</b>
+    <pre style="margin:8px 0 0;white-space:pre-wrap;font:12.5px/1.6 var(--mono);color:var(--brass-l)">刷怪速率  rate = (0.75 + diff × 0.35) / 1.35   只/秒
+配额      quota ≈ rate × dur × 0.85</pre>
+    <p style="margin:8px 0 0">
+      末位系数 <b>0.85</b> 是实测标定的：初版用 0.55，跑下来到第 11 波只要 <b>173 秒</b>，
+      而旧的时间驱动版解析值是 <b>246 秒</b> —— 快了 35%，等于把单局砍掉三分之一。
+      改成 0.85 后节奏与旧的 22~36 秒/波基本对齐。
+    </p>
+    <p style="margin:8px 0 0">
+      <b>⚠ 改这个系数前先按同一口径实测</b>（H5 侧用 <code>?auto=N</code> 跑到第 11 波计时，
+      Unity 侧跑等价的自检），不要照公式拍脑袋。
+    </p>
+  </div>
+
   <div class="note warn">
     上表的「同时上限」是<b>性能红线</b>而非设计目标。工程当前无版本控制、无性能压测基线，同屏 30 只 1.6k 像素的巨型怪 + 投射物是否稳 60 帧，必须先做压测。详见 ⑦ 风险 R2。
+  </div>
+
+  <div class="note ok">
+    <b>本表是 H5 原型与 Unity 工程共用的唯一依据。</b>两边都必须按这张表实现推进逻辑，
+    不要各写一套 —— 配额列是 2026-09-24 补入的，此前只有难度系数，导致两边无法对齐。
   </div>
 
   <h3>BOSS 素材的额外价值</h3>
@@ -1052,7 +1083,7 @@ footer{max-width:1180px; margin:0 auto; padding:26px 22px 60px; color:var(--mut)
     <div class="bd">
       <div class="row"><span class="k">现状</span><span>当前 <code>Enemy.prefab</code> 是占位色块，几乎零渲染成本。</span></div>
       <div class="row"><span class="k">问题</span><span>素材的敌人体积很大：巨型 BOSS 单帧 <b>1610×1446</b>，3 级怪约 <b>660×640</b>，1 级怪约 <b>500×550</b>。波次表里 11 波要同屏 30 只 —— 若 30 只都是 3 级怪，仅敌人就接近 <b>2000 万像素</b>填充率，叠加投射物与特效，掉帧几乎必然。</span></div>
-      <div class="row"><span class="k">应对</span><span>① 先做压测：按波次表上限铺满敌人，实测帧率再回填「同时上限」；② 敌人必须合图集（同图资源合 SpriteAtlas）以减少 draw call；③ 离屏敌人走对象池休眠，不要只做 <code>SetActive(false)</code>；④ 巨型 BOSS 出现时强制降低其它敌人上限。</span></div>
+      <div class="row"><span class="k">应对</span><span>① 先做压测：按波次表上限铺满敌人，实测帧率再回填「同时上限」；② <b>瓶颈是填充率（overdraw）不是 draw call</b> —— 同类型敌人共用同一张贴图，sprite batcher 会自动合批，但每个 sprite 的四边形面积照算，30 只 660×640 的怪就是 1200 万像素的 overdraw；③ 离屏敌人走对象池休眠并彻底停掉渲染，不要只做 <code>SetActive(false)</code>；④ 巨型 BOSS 出现时强制降低其它敌人上限。</span></div>
     </div>
   </div>
 

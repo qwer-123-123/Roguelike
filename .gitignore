@@ -90,6 +90,9 @@ Docs/Design/h5/assets/
 Assets/Art/
 Assets/Configs/
 Assets/Screenshots/
+# camera_screenshot 技能的输出会落在 Assets 根目录（不在 Screenshots/ 下）
+Assets/screenshot.png
+Assets/screenshot.png.meta
 
 # ---------- 本机调试产物 ----------
 # _tools/ 下的脚本要入仓（用来重新生成素材），但它们的输出与浏览器临时目录不入仓
