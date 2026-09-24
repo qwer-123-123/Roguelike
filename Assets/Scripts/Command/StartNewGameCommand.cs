@@ -28,7 +28,12 @@ namespace Game
 
         protected override void OnExecute()
         {
-            // 1. 数据模型归零
+            // ── 复位清单 ──
+            // 重开不走 SceneManager.LoadScene（那不会重建 QFramework 静态单例，状态会残留），
+            // 所以每一样带运行时状态的东西都得在这里显式复位。
+            // **新增任何带运行时状态的系统，必须往这张清单里补一步。**
+
+            // 1. 数据模型归零（不含 Phase 与 SelectedClassIndex —— 两者分别由命令与玩家选择驱动）
             this.GetModel<IGameStateModel>().Reset();
 
             // 2. 回收所有运行时生成的对象（敌人/投射物/掉落物回对象池）—— 返回开始界面时清空场地
@@ -45,7 +50,13 @@ namespace Game
             // 5. 隐藏升级面板并恢复时间缩放（防止重开时面板仍开着/游戏被暂停）
             Object.FindObjectOfType<UpgradePanelController>()?.HideForNewGame();
 
-            // 6. 切到目标阶段（开始界面 / 死亡面板据此显隐，玩法逻辑据 Playing 恢复推进）
+            // 6. 玩家数值复位：按**当前兵种**重建基准、清空全部加成与限时 buff。
+            //    刻意不动 SelectedClassIndex —— 重开沿用同一兵种是预期行为。
+            //    漏了这一步的表现是「重开后伤害/弹药/护甲还是上一局的」。
+            this.GetSystem<IPlayerStatSystem>().ResetStats();
+
+            // 7. 切到目标阶段（开始界面 / 死亡面板据此显隐，玩法逻辑据 Playing 恢复推进）。
+            //    放在最后：前面若有任何步骤的副作用会改 Phase，这里覆盖掉。
             this.GetModel<IGameStateModel>().Phase.Value = targetPhase;
         }
     }

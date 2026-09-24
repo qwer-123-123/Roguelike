@@ -23,6 +23,12 @@ namespace Game
             // System（业务逻辑）
             RegisterSystem<IUpgradeSystem>(new UpgradeSystem());
             RegisterSystem<IDifficultySystem>(new DifficultySystem());
+
+            // 玩家局内数值的唯一权威（由 角色 × 武器 派生 + 加成项）。
+            // ⚠ 这是本工程第一个**带运行时状态**的 System —— 新增这类 System 时，
+            //   必须在 StartNewGameCommand 里补一步复位，否则重开会残留上一局的数值。
+            //   当前的复位步骤数见该命令内的编号清单。
+            RegisterSystem<IPlayerStatSystem>(new PlayerStatSystem());
         }
     }
 }

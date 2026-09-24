@@ -80,9 +80,16 @@ Docs/Design/h5/assets/
 #   而素材许可尚未确认，公开再分发有风险 —— 当初 Docs/Design/h5/assets/ 正是
 #   为避免这一点才从全部历史中摘除的。
 #
-# 处理：用户正在把仓库改为私有。**确认改为私有无误后，删掉下面这一行并提交素材。**
+# 处理：用户正在把仓库改为私有。**确认改为私有无误后，删掉下面这几行并提交。**
 #   （见 Docs/Plans/2026-09-22-计划-兵种系统与美术落地.md 的风险 R1）
+#
+# Assets/Configs/ 与 Assets/Screenshots/ 同理被忽略：
+#   - Configs 是从 Art 派生的（菜单 Tools ▸ Game ▸ Build Configs 一键重建），
+#     里面的精灵引用指向不存在的图会报错，所以与 Art 同进同出
+#   - Screenshots 是 play_capture 的运行态截图，属调试产物
 Assets/Art/
+Assets/Configs/
+Assets/Screenshots/
 
 # ---------- 本机调试产物 ----------
 # _tools/ 下的脚本要入仓（用来重新生成素材），但它们的输出与浏览器临时目录不入仓

@@ -25,7 +25,14 @@ namespace Game
         BindableProperty<float> SurvivedTime { get; }
         /// <summary>当前游戏阶段。玩法逻辑据此决定是否推进（唯一事实来源）。</summary>
         BindableProperty<GamePhase> Phase { get; }
-        /// <summary>重开一局时把本局数据归零（不含 Phase，Phase 由命令驱动）。</summary>
+
+        /// <summary>
+        /// 当前选中的兵种索引（0 ~ 兵种数-1，见 <see cref="ClassCatalog"/> 的索引约定）。
+        /// 与 <see cref="Phase"/> 同类：**重开不清它** —— 重开一局沿用同一兵种是预期行为。
+        /// </summary>
+        BindableProperty<int> SelectedClassIndex { get; }
+
+        /// <summary>重开一局时把本局数据归零（不含 Phase 与 SelectedClassIndex，两者分别由命令与玩家选择驱动）。</summary>
         void Reset();
     }
 
@@ -37,6 +44,7 @@ namespace Game
         public BindableProperty<int> Kills { get; } = new(0);
         public BindableProperty<float> SurvivedTime { get; } = new(0f);
         public BindableProperty<GamePhase> Phase { get; } = new(GamePhase.Ready);
+        public BindableProperty<int> SelectedClassIndex { get; } = new(0);
 
         protected override void OnInit()
         {
@@ -51,6 +59,8 @@ namespace Game
             Kills.SetValueWithoutEvent(0);
             SurvivedTime.SetValueWithoutEvent(0f);
             // Phase 不在此重置：由 StartNewGameCommand / GameOverCommand 显式驱动
+            // SelectedClassIndex 也不在此重置：重开沿用同一兵种（H5 的「重开」行为一致）。
+            //   ⚠ 别顺手补上 —— 补了会让玩家每次重开都被打回第一个兵种。
         }
     }
 }
