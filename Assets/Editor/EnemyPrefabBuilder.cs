@@ -26,11 +26,18 @@ namespace Game.EditorTools
             // 先用一个临时对象搭层级，再覆盖保存
             var root = new GameObject("Enemy", typeof(Transform));
 
-            // ---- Visual：SpriteRenderer + CharacterView ----
+            // ---- Visual（只负责旋转/翻转）→ Sprite（持有 SpriteRenderer，承载 offsetY）----
+            // 分两层是必须的：offsetY 要随 Visual 的旋转一起转。
+            // 若把 SpriteRenderer 与 CharacterView 放同一节点，localPosition 在父空间、
+            // 不随旋转走，攻击时（攻击帧比待机帧高）会看出明显位移。
             var visualGo = new GameObject("Visual");
             visualGo.transform.SetParent(root.transform, false);
-            var sr = visualGo.AddComponent<SpriteRenderer>();
+
+            var spriteGo = new GameObject("Sprite");
+            spriteGo.transform.SetParent(visualGo.transform, false);
+            var sr = spriteGo.AddComponent<SpriteRenderer>();
             sr.sortingOrder = SortingOrders.Enemy;
+
             var view = visualGo.AddComponent<CharacterView>();
             SetRef(view, "spriteRenderer", sr);
 

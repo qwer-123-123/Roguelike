@@ -130,11 +130,32 @@ namespace Game.EditorTools
                 log.AppendLine("  新建 Player/Visual");
             }
 
-            var sr = visualGo.GetComponent<SpriteRenderer>();
+            // SpriteRenderer 必须挂在 Visual 的**子节点**上，不能与 CharacterView 同节点。
+            // 因为 offsetY 要随 Visual 的旋转一起转（见 CharacterView.ApplyTransform 的注释）——
+            // 同节点的话 localPosition 在父空间、不随旋转走，攻击时会看出位移。
+            var spriteGo = visualGo.transform.Find("Sprite") != null
+                ? visualGo.transform.Find("Sprite").gameObject
+                : null;
+            if (spriteGo == null)
+            {
+                spriteGo = new GameObject("Sprite");
+                spriteGo.transform.SetParent(visualGo.transform, false);
+                log.AppendLine("  新建 Visual/Sprite 子节点");
+            }
+
+            var sr = spriteGo.GetComponent<SpriteRenderer>();
             if (sr == null)
             {
-                sr = visualGo.AddComponent<SpriteRenderer>();
+                sr = spriteGo.AddComponent<SpriteRenderer>();
                 log.AppendLine("  挂上 SpriteRenderer");
+            }
+
+            // 清理历史遗留：旧结构把 SpriteRenderer 挂在 Visual 自己身上
+            var stray = visualGo.GetComponent<SpriteRenderer>();
+            if (stray != null && stray != sr)
+            {
+                Object.DestroyImmediate(stray, true);
+                log.AppendLine("  移除 Visual 上误挂的 SpriteRenderer（旧结构）");
             }
 
             // 每次都强制设一遍排序值：只在新建时设的话，若节点已存在就永远不生效

@@ -34,6 +34,8 @@ namespace Game
         [SerializeField] private float flashDecay = 6f;
 
         private ISpriteProvider provider;
+        /// <summary>持有 SpriteRenderer 的那个节点。offsetY 写在它上面（见 ApplyTransform）。</summary>
+        private Transform spriteNode;
 
         private Sprite[] frames;
         private float frameDuration = 0.1f;
@@ -84,8 +86,15 @@ namespace Game
 
         private void Awake()
         {
+            // 先在自身找，再往下找子节点 —— 正确的预制体结构是 SpriteRenderer
+            // 挂在 Visual 的子节点上（见 ApplyTransform 的注释）
             if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
-            if (spriteRenderer != null) baseColor = spriteRenderer.color;
+            if (spriteRenderer == null) spriteRenderer = GetComponentInChildren<SpriteRenderer>(true);
+            if (spriteRenderer != null)
+            {
+                baseColor = spriteRenderer.color;
+                spriteNode = spriteRenderer.transform;
+            }
         }
 
         // ================= 数据绑定 =================
@@ -213,13 +222,38 @@ namespace Game
             spriteRenderer.sprite = frames[Mathf.Clamp(frameIndex, 0, frames.Length - 1)];
         }
 
-        /// <summary>把缩放 / 旋转 / 垂直锚点写到 Visual 的 Transform 上。</summary>
+        /// <summary>
+        /// 把缩放 / 旋转 / 垂直锚点写到 Transform 上。
+        ///
+        /// ★ 锚点必须落在**旋转之内**：offsetY 要写在持有 SpriteRenderer 的那个子节点上，
+        ///   不能写成 Visual 自己的 localPosition。
+        ///
+        ///   原因：`localPosition` 是**父空间**坐标，不受自身 `localRotation` 影响 ——
+        ///   写成 Visual.localPosition 的话，补偿量永远朝世界里固定的「上」，
+        ///   而帧内容的偏移是跟着角色朝向转的。攻击帧比待机帧高（手枪 204px vs 135px），
+        ///   补偿量约 0.45 格，于是**角色一转朝向身体中心就偏出去近半格**，
+        ///   表现就是「攻击时向后/侧向位移」。H5 原型是对的（偏移写在 rotate 之后），
+        ///   这是移植到 Unity 时踩的坑。
+        ///
+        ///   正确结构：Visual（旋转/翻转）→ Sprite（SpriteRenderer，承载 offsetY）
+        /// </summary>
         private void ApplyTransform()
         {
             transform.localScale = new Vector3(flip ? -uniformScale : uniformScale, uniformScale, 1f);
-            // 锚点：帧越高 offsetY 越大，角色向上延伸、脚底不动（见 ISpriteProvider 注释）
-            transform.localPosition = new Vector3(0f, clipOffsetY, 0f);
             transform.localRotation = Quaternion.Euler(0f, 0f, aimRadians * Mathf.Rad2Deg + aimRotationOffsetDeg);
+
+            Vector3 offset = new Vector3(0f, clipOffsetY, 0f);
+            if (spriteNode != null && spriteNode != transform)
+            {
+                // 正确路径：偏移写在子节点上，随 Visual 一起旋转
+                spriteNode.localPosition = offset;
+            }
+            else
+            {
+                // 退路：SpriteRenderer 与 CharacterView 同节点（旧结构）。
+                // 锚点会随朝向失准，仅为不破坏既有预制体而保留。
+                transform.localPosition = offset;
+            }
         }
     }
 }
