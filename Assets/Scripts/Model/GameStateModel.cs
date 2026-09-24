@@ -2,11 +2,13 @@ using QFramework;
 
 namespace Game
 {
-    /// <summary>游戏阶段：开始界面 / 局内进行 / 已结束。</summary>
+    /// <summary>游戏阶段：开始界面 / 选兵种 / 局内进行 / 已结束。</summary>
     public enum GamePhase
     {
         /// <summary>开始界面，世界静止。</summary>
         Ready,
+        /// <summary>兵种选择，世界静止（尚未开局）。</summary>
+        ClassSelect,
         /// <summary>局内进行中。</summary>
         Playing,
         /// <summary>玩家已死亡，世界冻结。</summary>

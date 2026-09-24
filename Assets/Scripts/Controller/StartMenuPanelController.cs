@@ -37,10 +37,13 @@ namespace Game
             }
         }
 
-        /// <summary>「开始游戏」：重置一局并进入局内。</summary>
+        /// <summary>
+        /// 「开始游戏」：重置一局并进入**兵种选择**阶段（不是直接开局）。
+        /// 选完兵种由 <see cref="ClassSelectPanelController"/> 再推进到 Playing。
+        /// </summary>
         private void StartGame()
         {
-            this.SendCommand(new StartNewGameCommand());
+            this.SendCommand(new StartNewGameCommand(GamePhase.ClassSelect));
         }
     }
 }
