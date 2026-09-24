@@ -70,11 +70,20 @@ namespace Game
 
             transform.Translate(moveDir * (Stats.Speed * Time.deltaTime));
 
-            // 表现状态：移动时走，静止时待机。攻击动画由 PlayerCombatController 抢占，
-            // 它播完会调回 IdleOrWalk()。
-            if (view != null && view.State != AnimState.Attack)
+            // 表现状态：移动时走，静止时待机。
+            //
+            // 攻击动画由 PlayerCombatController 抢占，播完后要**由这里负责切回去**。
+            // 判据必须带 `IsFinished`：只判「状态不是 Attack」是错的 —— 动画播完后
+            // `state` 仍停在 Attack（非循环 clip 播完只置 IsFinished，不改 state），
+            // 于是这个分支永远进不去，角色僵死在攻击帧上。
+            // 症状：附近没敌人时不再触发新攻击，攻击帧就彻底卡住不动。
+            if (view != null)
             {
-                view.Play(moveDir.sqrMagnitude > 0.0001f ? AnimState.Walk : AnimState.Idle);
+                bool attackPlaying = view.State == AnimState.Attack && !view.IsFinished;
+                if (!attackPlaying)
+                {
+                    view.Play(moveDir.sqrMagnitude > 0.0001f ? AnimState.Walk : AnimState.Idle);
+                }
             }
         }
 
